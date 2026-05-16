@@ -1,0 +1,303 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// IDENTITY & ACCESS MANAGEMENT (IAM)
+// -----------------------------------------------------------------------------
+
+model User {
+  id           String  @id @default(uuid())
+  name         String
+  email        String  @unique
+  passwordHash String
+  isActive     Boolean @default(true)
+
+  // RBAC Relation
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations for traceability
+  sessions     Session[]
+  loginHistory LoginHistory[]
+  activityLogs ActivityLog[]
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String  @id @default(uuid())
+  name        String  @unique // e.g., 'Admin', 'Comercial', 'Financeiro', 'Operacao', 'Colaborador', 'Cliente'
+  description String?
+
+  users       User[]
+  permissions RolePermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(uuid())
+  action      String  @unique // e.g., 'create:invoice', 'delete:lead', 'view:audit_logs'
+  description String?
+
+  roles RolePermission[]
+
+  createdAt DateTime @default(now())
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model LoginHistory {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  loginAt   DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+  status    String // 'SUCCESS', 'FAILED'
+  reason    String? // If failed, why? (e.g., 'INVALID_PASSWORD')
+
+  @@map("login_history")
+}
+
+// -----------------------------------------------------------------------------
+// TRACEABILITY & AUDIT
+// -----------------------------------------------------------------------------
+
+// Activity Logs: For the timeline UI (Business Events)
+model ActivityLog {
+  id     String  @id @default(uuid())
+  userId String? // Can be null if system-generated
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action String // e.g., 'CREATED_PROPOSAL', 'MOVED_LEAD_STAGE'
+  module String // e.g., 'CRM', 'FINANCIAL', 'PROJECTS'
+
+  entityType String // e.g., 'Lead', 'Invoice'
+  entityId   String // The ID of the affected record
+
+  description String // Human readable description
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([module])
+  @@map("activity_logs")
+}
+
+// Audit Logs: The Black Box (Strict Data Changes)
+model AuditLog {
+  id     String  @id @default(uuid())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action     String // 'CREATE', 'UPDATE', 'DELETE'
+  entityType String // e.g., 'Proposal', 'UserRole'
+  entityId   String
+
+  oldValues   String?    // Previous state (Stringified JSON)
+  newValues   String?    // New state (Stringified JSON)
+
+  ipAddress String?
+  timestamp DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// -----------------------------------------------------------------------------
+// CORE BUSINESS ENTITIES
+// -----------------------------------------------------------------------------
+
+model Lead {
+  id          String   @id @default(uuid())
+  companyName String
+  contactName String
+  email       String?
+  phone       String?
+  status      String   @default("NOVO") // NOVO, CONTACTADO, REUNIAO, PROPOSTA, FECHADO
+  value       Float?
+  
+  // Convertion mapping
+  convertedToClientId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("leads")
+}
+
+model Client {
+  id           String   @id @default(uuid())
+  legalName    String
+  tradeName    String
+  document     String?  // CNPJ/CPF
+  status       String   @default("ACTIVE") // ACTIVE, INACTIVE, IN_DEBT
+
+  contacts     Contact[]
+  projects     Project[]
+  contracts    Contract[]
+  invoices     Invoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("clients")
+}
+
+model Contact {
+  id       String @id @default(uuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  name     String
+  role     String? // e.g., CEO, CTO
+  email    String?
+  phone    String?
+  isMain   Boolean @default(false)
+
+  @@map("contacts")
+}
+
+model Contract {
+  id       String @id @default(uuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  title    String
+  value    Float
+  status   String @default("DRAFT") // DRAFT, SIGNED, EXPIRED, CANCELLED
+  
+  signedAt DateTime?
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contracts")
+}
+
+model Project {
+  id       String @id @default(uuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  
+  name        String
+  description String?
+  status      String @default("PLANNING") // PLANNING, EXECUTION, REVIEW, DELIVERED, CANCELLED
+  progress    Int    @default(0) // 0 to 100
+
+  tasks    Task[]
+  invoices Invoice[]
+
+  startDate DateTime?
+  endDate   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("projects")
+}
+
+model Task {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?
+  status      String @default("TODO") // BACKLOG, TODO, IN_PROGRESS, REVIEW, DONE
+  priority    String @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+
+  assignedToId String? // Optional relation to User
+
+  dueDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tasks")
+}
+
+// -----------------------------------------------------------------------------
+// FINANCIAL MODULE
+// -----------------------------------------------------------------------------
+
+model Invoice {
+  id        String  @id @default(uuid())
+  clientId  String
+  client    Client  @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  description String
+  amount      Float
+  status      String @default("PENDING") // PENDING, PAID, OVERDUE, CANCELLED
+  
+  dueDate DateTime
+  paidAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("invoices")
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  description String
+  category    String   @default("OPERACIONAL") // OPERACIONAL, IMPOSTO, FOLHA, INFRAESTRUTURA
+  amount      Float
+  status      String   @default("PENDING") // PENDING, PAID
+  
+  dueDate DateTime
+  paidAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("expenses")
+}

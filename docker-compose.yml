@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: blackdev-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: blackdev_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - blackdev-pg-data:/var/lib/postgresql/data
+
+volumes:
+  blackdev-pg-data:
