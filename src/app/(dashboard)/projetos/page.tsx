@@ -11,43 +11,25 @@ export default async function ProjetosPage() {
   
   // Real data fetching
   const projects = await prisma.project.findMany({
-    include: { client: { select: { tradeName: true } } },
+    include: { 
+      client: { select: { tradeName: true } },
+      tasks: true
+    },
     orderBy: { createdAt: 'desc' }
   });
 
-  // MOCK fallback for UI demonstration if DB is empty
-  const displayProjects = projects.length > 0 ? projects : [
-    {
-      id: '1',
-      name: 'BlackDev OS (Internal)',
-      client: { tradeName: 'BlackDev' },
-      status: 'EXECUTION',
-      progress: 65,
-      tasksCount: 12,
-      tasksDone: 8,
-      dueDate: new Date('2026-06-15')
-    },
-    {
-      id: '2',
-      name: 'E-commerce App',
-      client: { tradeName: 'Vanguard Retail' },
-      status: 'PLANNING',
-      progress: 10,
-      tasksCount: 45,
-      tasksDone: 4,
-      dueDate: new Date('2026-08-01')
-    },
-    {
-      id: '3',
-      name: 'Landing Page Q3',
-      client: { tradeName: 'TechCorp S/A' },
-      status: 'REVIEW',
-      progress: 95,
-      tasksCount: 10,
-      tasksDone: 9,
-      dueDate: new Date('2026-05-20')
+  const displayProjects = projects.map(p => {
+    const tasksCount = p.tasks.length;
+    const tasksDone = p.tasks.filter(t => t.status === "DONE").length;
+    const progress = tasksCount === 0 ? 0 : Math.round((tasksDone / tasksCount) * 100);
+    
+    return {
+      ...p,
+      tasksCount,
+      tasksDone,
+      progress
     }
-  ];
+  });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
