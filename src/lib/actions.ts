@@ -14,8 +14,19 @@ export async function authenticate(
       switch (error.type) {
         case 'CredentialsSignin':
           return 'Credenciais inválidas.';
-        default:
+        case 'CallbackRouteError':
+          if (error.cause?.err?.message === 'DEVICE_UNTRUSTED') {
+            return 'Dispositivo não reconhecido. Uma solicitação de acesso foi gerada para aprovação do outro sócio.';
+          }
+          if (error.cause?.err?.message === 'DEVICE_PENDING') {
+            return 'Este dispositivo ainda aguarda aprovação de um administrador.';
+          }
+          if (error.cause?.err?.message === 'DEVICE_REVOKED') {
+            return 'O acesso deste dispositivo foi revogado permanentemente.';
+          }
           return 'Algo deu errado na autenticação.';
+        default:
+          return 'Erro interno no servidor de autenticação.';
       }
     }
     throw error;

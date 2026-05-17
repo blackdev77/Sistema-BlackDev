@@ -68,8 +68,9 @@ export function Sidebar() {
         <div>
           <h3 className="px-3 text-[10px] font-mono tracking-widest text-muted uppercase mb-2">Sistema</h3>
           <nav className="flex flex-col gap-0.5">
+            <NavItem href="/admin/seguranca" icon={ShieldAlert} label="Segurança (Zero Trust)" />
             <NavItem href="/admin/users" icon={Users} label="Gestão de Equipe" />
-            <NavItem href="/admin/logs" icon={ShieldAlert} label="Auditoria (Logs)" />
+            <NavItem href="/admin/logs" icon={FileText} label="Auditoria (Logs)" />
           </nav>
         </div>
 

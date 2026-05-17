@@ -3,12 +3,43 @@
 import { useActionState } from 'react';
 import { authenticate } from '@/lib/actions';
 import { Button } from '@/components/ui/Button';
+import { useEffect, useState } from 'react';
+
+// Basic fingerprint generation for prototype
+function generateFingerprint() {
+  if (typeof window === 'undefined') return 'unknown';
+  const data = [
+    navigator.userAgent,
+    navigator.language,
+    screen.colorDepth,
+    screen.width + 'x' + screen.height,
+    new Date().getTimezoneOffset()
+  ].join('||');
+  
+  // Very simple hash for the string
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    const char = data.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16);
+}
 
 export default function LoginForm() {
   const [errorMessage, dispatch, isPending] = useActionState(authenticate, undefined);
+  const [fingerprint, setFingerprint] = useState('');
+  const [userAgent, setUserAgent] = useState('');
+
+  useEffect(() => {
+    setFingerprint(generateFingerprint());
+    setUserAgent(navigator.userAgent);
+  }, []);
 
   return (
     <form action={dispatch} className="flex flex-col gap-4 bg-surface p-8 border border-border">
+      <input type="hidden" name="fingerprint" value={fingerprint} />
+      <input type="hidden" name="userAgent" value={userAgent} />
       <div className="flex flex-col gap-2">
         <label className="text-xs font-mono text-muted uppercase tracking-wider" htmlFor="email">
           Email Corporativo
