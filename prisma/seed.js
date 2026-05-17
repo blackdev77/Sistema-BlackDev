@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs')
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
 
@@ -49,15 +50,23 @@ async function main() {
     }
   })
 
+  // Hash secure passwords using bcrypt
+  const salt = bcrypt.genSaltSync(10)
+  const hashedAdmin = bcrypt.hashSync('BlackDev#2026!Admin', salt)
+  const hashedGustavo = bcrypt.hashSync('BlackDev#2026!Gustavo', salt)
+  const hashedEdmundo = bcrypt.hashSync('BlackDev#2026!Edmundo', salt)
+
   // 4. Create Master Admin Users
   // Superlogin BlackDev
   const blackdev = await prisma.user.upsert({
     where: { email: 'admin@blackdev.com' },
-    update: {},
+    update: {
+      passwordHash: hashedAdmin
+    },
     create: {
       name: 'BlackDev OS (SuperAdmin)',
       email: 'admin@blackdev.com',
-      passwordHash: '123456',
+      passwordHash: hashedAdmin,
       roleId: adminRole.id,
     },
   })
@@ -65,11 +74,14 @@ async function main() {
   // Gustavo
   const gustavo = await prisma.user.upsert({
     where: { email: 'gustavo@blackdev.com' },
-    update: { name: 'Gustavo' },
+    update: { 
+      name: 'Gustavo',
+      passwordHash: hashedGustavo
+    },
     create: {
       name: 'Gustavo',
       email: 'gustavo@blackdev.com',
-      passwordHash: '123456',
+      passwordHash: hashedGustavo,
       roleId: adminRole.id,
     },
   })
@@ -77,11 +89,14 @@ async function main() {
   // Edmundo
   const edmundo = await prisma.user.upsert({
     where: { email: 'edmundo@blackdev.com' },
-    update: { name: 'Edmundo' },
+    update: { 
+      name: 'Edmundo',
+      passwordHash: hashedEdmundo
+    },
     create: {
       name: 'Edmundo',
       email: 'edmundo@blackdev.com',
-      passwordHash: '123456',
+      passwordHash: hashedEdmundo,
       roleId: adminRole.id,
     },
   })

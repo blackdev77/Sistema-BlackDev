@@ -18,11 +18,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!user || !user.isActive) return null;
 
-        // In production, we use bcrypt:
-        // const passwordsMatch = await bcrypt.compare(credentials.password as string, user.passwordHash);
-        
-        // Since we seeded with plain text '123456' for the prototype:
-        const passwordsMatch = credentials.password === user.passwordHash;
+        // Verify hashed password using bcryptjs
+        const passwordsMatch = await bcrypt.compare(credentials.password as string, user.passwordHash);
 
         if (passwordsMatch) {
           // === DEVICE FINGERPRINTING & MFA SECURITY ===
