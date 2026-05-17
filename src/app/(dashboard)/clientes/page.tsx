@@ -2,8 +2,10 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/prisma";
-import { Users, Plus, Search, ExternalLink } from "lucide-react";
+import { Users, Search, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { ClientFormSlideOver } from "./ClientFormSlideOver";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export const dynamic = "force-dynamic";
 
@@ -34,10 +36,7 @@ export default async function ClientesPage() {
               className="bg-surface border border-border text-sm pl-9 pr-4 py-2 w-64 focus:outline-none focus:ring-1 focus:ring-white transition-shadow text-white placeholder:text-muted-foreground"
             />
           </div>
-          <Button variant="primary" className="gap-2">
-            <Plus className="w-4 h-4" />
-            Novo Cliente
-          </Button>
+          <ClientFormSlideOver />
         </div>
       </div>
 
@@ -56,8 +55,12 @@ export default async function ClientesPage() {
             <tbody className="divide-y divide-border">
               {clients.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
-                    Nenhum cliente cadastrado no sistema.
+                  <td colSpan={5} className="p-4">
+                    <EmptyState 
+                      icon={Users} 
+                      title="Nenhum cliente cadastrado" 
+                      description="Você ainda não cadastrou nenhum cliente. Adicione o seu primeiro cliente para começar a gerar contratos e faturas." 
+                    />
                   </td>
                 </tr>
               ) : clients.map((client) => {

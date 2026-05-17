@@ -4,6 +4,66 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient()
+const basePrisma = globalForPrisma.prisma ?? new PrismaClient()
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+// Prisma Extension for Automatic Audit Logging
+export const prisma = basePrisma.$extends({
+  query: {
+    $allModels: {
+      async create({ model, operation, args, query }) {
+        const result = await query(args);
+        try {
+          await basePrisma.auditLog.create({
+            data: {
+              action: "CREATE",
+              entityType: model,
+              entityId: (result as any).id || "unknown",
+              newData: JSON.stringify(result),
+              // We use SYSTEM for now as context injection requires deeper setup
+              userId: "SYSTEM_OR_UNKNOWN" 
+            }
+          });
+        } catch (e) {
+          console.error("Audit Log Failed:", e);
+        }
+        return result;
+      },
+      async update({ model, operation, args, query }) {
+        const result = await query(args);
+        try {
+          await basePrisma.auditLog.create({
+            data: {
+              action: "UPDATE",
+              entityType: model,
+              entityId: (result as any).id || "unknown",
+              newData: JSON.stringify(result),
+              userId: "SYSTEM_OR_UNKNOWN"
+            }
+          });
+        } catch (e) {
+          console.error("Audit Log Failed:", e);
+        }
+        return result;
+      },
+      async delete({ model, operation, args, query }) {
+        const result = await query(args);
+        try {
+          await basePrisma.auditLog.create({
+            data: {
+              action: "DELETE",
+              entityType: model,
+              entityId: (result as any).id || "unknown",
+              oldData: JSON.stringify(result),
+              userId: "SYSTEM_OR_UNKNOWN"
+            }
+          });
+        } catch (e) {
+          console.error("Audit Log Failed:", e);
+        }
+        return result;
+      }
+    }
+  }
+})
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = basePrisma
