@@ -10,9 +10,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// -----------------------------------------------------------------------------
-// IDENTITY & ACCESS MANAGEMENT (IAM)
-// -----------------------------------------------------------------------------
+// ============================================================================
+// 1. IDENTITY & ACCESS MANAGEMENT (IAM) & SECURITY
+// ============================================================================
 
 model User {
   id           String  @id @default(uuid())
@@ -20,45 +20,76 @@ model User {
   email        String  @unique
   passwordHash String
   isActive     Boolean @default(true)
+  
+  // Security & MFA
+  mfaEnabled   Boolean @default(false)
+  mfaSecret    String?
 
-  // RBAC Relation
-  roleId String
-  role   Role   @relation(fields: [roleId], references: [id])
+  roleId       String
+  role         Role    @relation(fields: [roleId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  profile      UserProfile?
 
-  // Relations for traceability
-  sessions     Session[]
-  loginHistory LoginHistory[]
-  activityLogs ActivityLog[]
-  auditLogs    AuditLog[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Traceability & Security Relations
+  sessions                  Session[]
+  loginHistory              LoginHistory[]
+  activityLogs              ActivityLog[]
+  auditLogs                 AuditLog[]
+  securityEvents            SecurityEvent[]
+  trustedDevices            TrustedDevice[]
+  
+  // Dual Approval Relations
+  deviceRequestsCreated     DeviceApprovalRequest[] @relation("DeviceRequestCreator")
+  deviceRequestsApproved    DeviceApprovalRequest[] @relation("DeviceRequestApprover")
+  criticalActionsRequested  CriticalActionRequest[] @relation("ActionRequester")
+  criticalActionsApproved   CriticalActionRequest[] @relation("ActionApprover")
+
+  // Operational Relations
+  assignedTasks             ProjectTask[]
+  assignedTickets           SupportTicket[]
+  leadInteractions          LeadInteraction[]
+  projectComments           ProjectComment[]
 
   @@map("users")
 }
 
+model UserProfile {
+  id          String  @id @default(uuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  avatarUrl   String?
+  bio         String?
+  phoneNumber String?
+  jobTitle    String?
+
+  @@map("user_profiles")
+}
+
 model Role {
   id          String  @id @default(uuid())
-  name        String  @unique // e.g., 'Admin', 'Comercial', 'Financeiro', 'Operacao', 'Colaborador', 'Cliente'
+  name        String  @unique 
   description String?
 
   users       User[]
   permissions RolePermission[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("roles")
 }
 
 model Permission {
   id          String  @id @default(uuid())
-  action      String  @unique // e.g., 'create:invoice', 'delete:lead', 'view:audit_logs'
+  action      String  @unique 
   description String?
+  module      String
 
-  roles RolePermission[]
-
-  createdAt DateTime @default(now())
+  roles       RolePermission[]
 
   @@map("permissions")
 }
@@ -76,79 +107,172 @@ model RolePermission {
   @@map("role_permissions")
 }
 
+// --- Session & Device Fingerprinting ---
+
 model Session {
   id           String   @id @default(uuid())
   sessionToken String   @unique
   userId       String
-  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  deviceId     String?
+  device       TrustedDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress    String?
+  userAgent    String?
+  expires      DateTime
 
   @@map("sessions")
 }
 
+model TrustedDevice {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  friendlyName String?
+  fingerprint  String   @unique
+  browser      String?
+  os           String?
+  ipAddress    String?
+  location     String?
+
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED, REVOKED, EXPIRED
+  expiresAt    DateTime?
+  
+  approvedById String?
+  approvedAt   DateTime?
+
+  sessions     Session[]
+  deviceRequests DeviceApprovalRequest[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("trusted_devices")
+}
+
+model DeviceApprovalRequest {
+  id           String   @id @default(uuid())
+  deviceId     String
+  device       TrustedDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  
+  requestedById String
+  requestedBy   User     @relation("DeviceRequestCreator", fields: [requestedById], references: [id])
+  
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  approvedById String?
+  approvedBy   User?    @relation("DeviceRequestApprover", fields: [approvedById], references: [id])
+  justification String?
+
+  createdAt    DateTime @default(now())
+  resolvedAt   DateTime?
+
+  @@map("device_approval_requests")
+}
+
+model CriticalActionRequest {
+  id           String   @id @default(uuid())
+  
+  requestedById String
+  requestedBy   User     @relation("ActionRequester", fields: [requestedById], references: [id])
+  
+  actionType   String   // e.g., 'DELETE_PROJECT', 'CHANGE_ADMIN_ROLE'
+  payload      String   // JSON containing what is to be executed
+  
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  approvedById String?
+  approvedBy   User?    @relation("ActionApprover", fields: [approvedById], references: [id])
+  justification String?
+
+  createdAt    DateTime @default(now())
+  resolvedAt   DateTime?
+
+  @@map("critical_action_requests")
+}
+
+// ============================================================================
+// 2. TRACEABILITY & AUDIT
+// ============================================================================
+
 model LoginHistory {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   loginAt   DateTime @default(now())
   ipAddress String?
   userAgent String?
-  status    String // 'SUCCESS', 'FAILED'
-  reason    String? // If failed, why? (e.g., 'INVALID_PASSWORD')
+  status    String   // 'SUCCESS', 'FAILED', 'MFA_REQUIRED', 'DEVICE_UNTRUSTED'
+  reason    String?  
 
   @@map("login_history")
 }
 
-// -----------------------------------------------------------------------------
-// TRACEABILITY & AUDIT
-// -----------------------------------------------------------------------------
+model SecurityEvent {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  eventType   String   // e.g., 'MFA_ENABLED', 'DEVICE_REVOKED', 'PASSWORD_CHANGED'
+  description String
+  ipAddress   String?
+  
+  createdAt   DateTime @default(now())
 
-// Activity Logs: For the timeline UI (Business Events)
+  @@map("security_events")
+}
+
 model ActivityLog {
-  id     String  @id @default(uuid())
-  userId String? // Can be null if system-generated
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id          String   @id @default(uuid())
+  userId      String? 
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  action String // e.g., 'CREATED_PROPOSAL', 'MOVED_LEAD_STAGE'
-  module String // e.g., 'CRM', 'FINANCIAL', 'PROJECTS'
+  action      String 
+  module      String 
+  entityType  String 
+  entityId    String 
+  description String 
 
-  entityType String // e.g., 'Lead', 'Invoice'
-  entityId   String // The ID of the affected record
-
-  description String // Human readable description
-
-  createdAt DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   @@index([entityType, entityId])
   @@index([module])
   @@map("activity_logs")
 }
 
-// Audit Logs: The Black Box (Strict Data Changes)
 model AuditLog {
-  id     String  @id @default(uuid())
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  action     String // 'CREATE', 'UPDATE', 'DELETE'
-  entityType String // e.g., 'Proposal', 'UserRole'
-  entityId   String
+  action      String 
+  entityType  String 
+  entityId    String 
 
-  oldValues   String?    // Previous state (Stringified JSON)
-  newValues   String?    // New state (Stringified JSON)
+  oldValues   String?    
+  newValues   String?    
 
-  ipAddress String?
-  timestamp DateTime @default(now())
+  ipAddress   String?
+  timestamp   DateTime @default(now())
 
   @@index([entityType, entityId])
   @@map("audit_logs")
 }
 
-// -----------------------------------------------------------------------------
-// CORE BUSINESS ENTITIES
-// -----------------------------------------------------------------------------
+// ============================================================================
+// 3. COMMERCIAL DOMAIN (CRM)
+// ============================================================================
+
+model LeadSource {
+  id          String @id @default(uuid())
+  name        String @unique // e.g., 'Indicação', 'Google Ads', 'Inbound'
+  leads       Lead[]
+
+  @@map("lead_sources")
+}
 
 model Lead {
   id          String   @id @default(uuid())
@@ -156,134 +280,309 @@ model Lead {
   contactName String
   email       String?
   phone       String?
-  status      String   @default("NOVO") // NOVO, CONTACTADO, REUNIAO, PROPOSTA, FECHADO
+  city        String?
+  status      String   @default("NOVO") 
+  potential   String   @default("MEDIUM") // LOW, MEDIUM, HIGH
+  urgency     String   @default("MEDIUM")
   value       Float?
   
-  // Convertion mapping
+  sourceId    String?
+  source      LeadSource? @relation(fields: [sourceId], references: [id])
+  
+  interactions LeadInteraction[]
+  proposals    Proposal[]
+  
   convertedToClientId String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("leads")
 }
+
+model LeadInteraction {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  type        String   // 'EMAIL', 'CALL', 'MEETING', 'NOTE'
+  notes       String
+  date        DateTime @default(now())
+  
+  @@map("lead_interactions")
+}
+
+// ============================================================================
+// 4. CLIENTS & COMPANIES DOMAIN
+// ============================================================================
 
 model Client {
   id           String   @id @default(uuid())
   legalName    String
   tradeName    String
   document     String?  // CNPJ/CPF
-  status       String   @default("ACTIVE") // ACTIVE, INACTIVE, IN_DEBT
+  address      String?
+  status       String   @default("ACTIVE") 
+  tier         String   @default("STANDARD") // STANDARD, VIP, ENTERPRISE
 
-  contacts     Contact[]
+  contacts     ClientContact[]
+  proposals    Proposal[]
   projects     Project[]
   contracts    Contract[]
   invoices     Invoice[]
+  tickets      SupportTicket[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@map("clients")
 }
 
-model Contact {
-  id       String @id @default(uuid())
-  clientId String
-  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+model ClientContact {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   
-  name     String
-  role     String? // e.g., CEO, CTO
-  email    String?
-  phone    String?
-  isMain   Boolean @default(false)
+  name        String
+  role        String?  
+  email       String?
+  phone       String?
+  whatsapp    String?
+  isMain      Boolean  @default(false)
+  
+  // For Client Portal access
+  portalAccess Boolean @default(false)
+  passwordHash String?
 
-  @@map("contacts")
+  @@map("client_contacts")
+}
+
+// ============================================================================
+// 5. PROPOSALS & CONTRACTS
+// ============================================================================
+
+model Proposal {
+  id          String   @id @default(uuid())
+  title       String
+  leadId      String?
+  lead        Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  clientId    String?
+  client      Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  
+  status      String   @default("DRAFT") // DRAFT, SENT, VIEWED, ACCEPTED, REJECTED
+  totalValue  Float
+  paymentTerms String?
+  validUntil  DateTime?
+  
+  versions    ProposalVersion[]
+  projects    Project[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("proposals")
+}
+
+model ProposalVersion {
+  id          String   @id @default(uuid())
+  proposalId  String
+  proposal    Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  
+  versionNum  Int
+  contentJSON String   // Stores the rich content of the proposal
+  pdfUrl      String?
+  
+  createdAt   DateTime @default(now())
+
+  @@map("proposal_versions")
 }
 
 model Contract {
-  id       String @id @default(uuid())
-  clientId String
-  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   
-  title    String
-  value    Float
-  status   String @default("DRAFT") // DRAFT, SIGNED, EXPIRED, CANCELLED
+  title       String
+  value       Float
+  status      String   @default("DRAFT") // DRAFT, PENDING_SIGNATURE, SIGNED, EXPIRED, CANCELLED
+  documentUrl String?
   
-  signedAt DateTime?
-  startsAt DateTime?
-  endsAt   DateTime?
+  signedAt    DateTime?
+  startsAt    DateTime?
+  endsAt      DateTime?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("contracts")
 }
 
+// ============================================================================
+// 6. PROJECTS & OPERATIONS
+// ============================================================================
+
+model ProjectType {
+  id          String    @id @default(uuid())
+  name        String    @unique // e.g., 'Website', 'SaaS', 'Mobile App', 'Support Retainer'
+  projects    Project[]
+
+  @@map("project_types")
+}
+
 model Project {
-  id       String @id @default(uuid())
-  clientId String
-  client   Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  proposalId  String?
+  proposal    Proposal? @relation(fields: [proposalId], references: [id])
+  typeId      String?
+  type        ProjectType? @relation(fields: [typeId], references: [id])
   
   name        String
   description String?
-  status      String @default("PLANNING") // PLANNING, EXECUTION, REVIEW, DELIVERED, CANCELLED
-  progress    Int    @default(0) // 0 to 100
+  status      String   @default("PLANNING") // PLANNING, EXECUTION, REVIEW, DELIVERED, CANCELLED, ON_HOLD
+  progress    Int      @default(0) 
+  priority    String   @default("MEDIUM")
 
-  tasks    Task[]
-  invoices Invoice[]
+  tasks       ProjectTask[]
+  milestones  ProjectMilestone[]
+  updates     ProjectUpdate[]
+  comments    ProjectComment[]
+  contracts   Contract[]
+  invoices    Invoice[]
+  approvals   ClientApproval[]
 
-  startDate DateTime?
-  endDate   DateTime?
+  startDate   DateTime?
+  endDate     DateTime?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("projects")
 }
 
-model Task {
-  id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+model ProjectMilestone {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  title       String
+  dueDate     DateTime?
+  status      String   @default("PENDING") // PENDING, COMPLETED
+  
+  tasks       ProjectTask[]
+
+  @@map("project_milestones")
+}
+
+model ProjectTask {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestoneId String?
+  milestone   ProjectMilestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
   
   title       String
   description String?
-  status      String @default("TODO") // BACKLOG, TODO, IN_PROGRESS, REVIEW, DONE
-  priority    String @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status      String   @default("TODO") // BACKLOG, TODO, IN_PROGRESS, REVIEW, DONE
+  priority    String   @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
 
-  assignedToId String? // Optional relation to User
+  assignedToId String?
+  assignedTo   User?   @relation(fields: [assignedToId], references: [id])
 
-  dueDate DateTime?
+  dueDate     DateTime?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@map("tasks")
+  @@map("project_tasks")
 }
 
-// -----------------------------------------------------------------------------
-// FINANCIAL MODULE
-// -----------------------------------------------------------------------------
+model ProjectUpdate {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  content     String
+  isPublicToClient Boolean @default(true) // Should show in client portal?
+
+  createdAt   DateTime @default(now())
+
+  @@map("project_updates")
+}
+
+model ProjectComment {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  content     String
+  
+  createdAt   DateTime @default(now())
+
+  @@map("project_comments")
+}
+
+model ClientApproval {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED_WITH_FEEDBACK
+  feedback    String?
+  
+  requestedAt DateTime @default(now())
+  resolvedAt  DateTime?
+
+  @@map("client_approvals")
+}
+
+// ============================================================================
+// 7. FINANCIAL MODULE
+// ============================================================================
 
 model Invoice {
-  id        String  @id @default(uuid())
-  clientId  String
-  client    Client  @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  
-  projectId String?
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   description String
   amount      Float
-  status      String @default("PENDING") // PENDING, PAID, OVERDUE, CANCELLED
+  status      String   @default("PENDING") // PENDING, PAID, OVERDUE, CANCELLED
   
-  dueDate DateTime
-  paidAt  DateTime?
+  dueDate     DateTime
+  paidAt      DateTime?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  payments    Payment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("invoices")
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  
+  amount      Float
+  method      String   // PIX, BOLETO, TRANSFER, CREDIT_CARD
+  paidAt      DateTime @default(now())
+
+  @@map("payments")
 }
 
 model Expense {
@@ -293,11 +592,64 @@ model Expense {
   amount      Float
   status      String   @default("PENDING") // PENDING, PAID
   
-  dueDate DateTime
-  paidAt  DateTime?
+  dueDate     DateTime
+  paidAt      DateTime?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("expenses")
+}
+
+// ============================================================================
+// 8. SUPPORT & COMMUNICATION
+// ============================================================================
+
+model SupportTicket {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  
+  subject     String
+  status      String   @default("OPEN") // OPEN, IN_PROGRESS, WAITING_CLIENT, RESOLVED, CLOSED
+  priority    String   @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  category    String   // BUG, FEATURE_REQUEST, DOUBT, MAINTENANCE
+  
+  assignedToId String?
+  assignedTo   User?   @relation(fields: [assignedToId], references: [id])
+
+  messages    TicketMessage[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("support_tickets")
+}
+
+model TicketMessage {
+  id          String   @id @default(uuid())
+  ticketId    String
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  senderType  String   // 'INTERNAL_USER', 'CLIENT'
+  senderId    String   // Maps to User.id or ClientContact.id based on senderType
+  
+  content     String
+  
+  createdAt   DateTime @default(now())
+
+  @@map("ticket_messages")
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String   // Target user
+  title       String
+  content     String
+  link        String?
+  isRead      Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+
+  @@map("notifications")
 }

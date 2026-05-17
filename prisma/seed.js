@@ -30,6 +30,7 @@ async function main() {
     create: {
       action: 'view:audit_logs',
       description: 'Visualizar logs do sistema',
+      module: 'SECURITY'
     },
   })
 
