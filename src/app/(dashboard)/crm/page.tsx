@@ -3,6 +3,7 @@ import { Filter, Search } from "lucide-react"
 import { prisma } from "@/lib/prisma";
 import { LeadFormSlideOver } from "./LeadFormSlideOver";
 import { KanbanBoard } from "./KanbanBoard";
+import { Button } from "@/components/ui/Button";
 
 export const dynamic = "force-dynamic";
 

@@ -18,9 +18,8 @@ export const prisma = basePrisma.$extends({
               action: "CREATE",
               entityType: model,
               entityId: (result as any).id || "unknown",
-              newData: JSON.stringify(result),
-              // We use SYSTEM for now as context injection requires deeper setup
-              userId: "SYSTEM_OR_UNKNOWN" 
+              newValues: JSON.stringify(result),
+              userId: null
             }
           });
         } catch (e) {
@@ -36,8 +35,8 @@ export const prisma = basePrisma.$extends({
               action: "UPDATE",
               entityType: model,
               entityId: (result as any).id || "unknown",
-              newData: JSON.stringify(result),
-              userId: "SYSTEM_OR_UNKNOWN"
+              newValues: JSON.stringify(result),
+              userId: null
             }
           });
         } catch (e) {
@@ -53,8 +52,8 @@ export const prisma = basePrisma.$extends({
               action: "DELETE",
               entityType: model,
               entityId: (result as any).id || "unknown",
-              oldData: JSON.stringify(result),
-              userId: "SYSTEM_OR_UNKNOWN"
+              oldValues: JSON.stringify(result),
+              userId: null
             }
           });
         } catch (e) {

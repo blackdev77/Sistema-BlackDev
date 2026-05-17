@@ -7,7 +7,7 @@ import { CheckSquare, Plus, Search, Filter } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function TarefasPage() {
-  const tasks = await prisma.task.findMany({
+  const tasks = await prisma.projectTask.findMany({
     include: { project: { select: { name: true } } },
     orderBy: { createdAt: 'desc' }
   });

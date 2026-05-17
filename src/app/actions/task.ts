@@ -10,7 +10,7 @@ export async function createTask(projectId: string, formData: FormData) {
 
     if (!title || title.length < 2) throw new Error("Título inválido");
 
-    await prisma.task.create({
+    await prisma.projectTask.create({
       data: {
         projectId,
         title,
@@ -28,7 +28,7 @@ export async function createTask(projectId: string, formData: FormData) {
 
 export async function updateTaskStatus(taskId: string, projectId: string, newStatus: string) {
   try {
-    await prisma.task.update({
+    await prisma.projectTask.update({
       where: { id: taskId },
       data: { status: newStatus }
     });
@@ -47,7 +47,7 @@ export async function createMilestone(projectId: string, formData: FormData) {
     
     if (!title || !dateStr) throw new Error("Dados inválidos");
 
-    await prisma.milestone.create({
+    await prisma.projectMilestone.create({
       data: {
         projectId,
         title,
@@ -64,9 +64,9 @@ export async function createMilestone(projectId: string, formData: FormData) {
 
 export async function toggleMilestone(milestoneId: string, projectId: string, currentStatus: boolean) {
   try {
-    await prisma.milestone.update({
+    await prisma.projectMilestone.update({
       where: { id: milestoneId },
-      data: { isCompleted: !currentStatus }
+      data: { status: !currentStatus ? "COMPLETED" : "PENDING" }
     });
 
     revalidatePath(`/projetos/${projectId}/board`);

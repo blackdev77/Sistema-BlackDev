@@ -46,17 +46,17 @@ export function MilestoneSidebar({ projectId, milestones }: { projectId: string,
             <div 
               key={m.id} 
               className={`flex items-start gap-3 p-3 rounded border transition-all cursor-pointer ${
-                m.isCompleted ? 'bg-emerald-950/10 border-emerald-900/30 opacity-60' : 'bg-surface border-border hover:border-white/20'
+                m.status === "COMPLETED" ? 'bg-emerald-950/10 border-emerald-900/30 opacity-60' : 'bg-surface border-border hover:border-white/20'
               }`}
-              onClick={() => handleToggle(m.id, m.isCompleted)}
+              onClick={() => handleToggle(m.id, m.status === "COMPLETED")}
             >
-              {m.isCompleted ? (
+              {m.status === "COMPLETED" ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
               ) : (
                 <Circle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
               )}
               <div className="flex flex-col gap-1">
-                <span className={`text-sm ${m.isCompleted ? 'text-muted-foreground line-through' : 'text-white'}`}>
+                <span className={`text-sm ${m.status === "COMPLETED" ? 'text-muted-foreground line-through' : 'text-white'}`}>
                   {m.title}
                 </span>
                 <span className="text-[10px] font-mono text-muted-foreground">

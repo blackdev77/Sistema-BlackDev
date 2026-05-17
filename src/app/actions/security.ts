@@ -7,7 +7,8 @@ import { auth } from "@/auth";
 export async function approveDevice(requestId: string, deviceId: string) {
   try {
     const session = await auth();
-    if (!session?.user?.id) throw new Error("Não autorizado");
+    const userId = session?.user?.id;
+    if (!userId) throw new Error("Não autorizado");
 
     // Start a transaction: Update Request, Update Device, Record Event
     await prisma.$transaction(async (tx) => {
@@ -15,7 +16,7 @@ export async function approveDevice(requestId: string, deviceId: string) {
         where: { id: requestId },
         data: {
           status: "APPROVED",
-          approvedById: session.user.id,
+          approvedById: userId,
           resolvedAt: new Date(),
         }
       });
@@ -24,14 +25,14 @@ export async function approveDevice(requestId: string, deviceId: string) {
         where: { id: deviceId },
         data: {
           status: "APPROVED",
-          approvedById: session.user.id,
+          approvedById: userId,
           approvedAt: new Date(),
         }
       });
 
       await tx.securityEvent.create({
         data: {
-          userId: session.user.id,
+          userId: userId,
           eventType: "DEVICE_APPROVED",
           description: `Dispositivo ${deviceId} aprovado.`,
         }
@@ -49,14 +50,15 @@ export async function approveDevice(requestId: string, deviceId: string) {
 export async function rejectDevice(requestId: string, deviceId: string, reason: string) {
   try {
     const session = await auth();
-    if (!session?.user?.id) throw new Error("Não autorizado");
+    const userId = session?.user?.id;
+    if (!userId) throw new Error("Não autorizado");
 
     await prisma.$transaction(async (tx) => {
       await tx.deviceApprovalRequest.update({
         where: { id: requestId },
         data: {
           status: "REJECTED",
-          approvedById: session.user.id,
+          approvedById: userId,
           resolvedAt: new Date(),
           justification: reason,
         }
@@ -66,14 +68,14 @@ export async function rejectDevice(requestId: string, deviceId: string, reason: 
         where: { id: deviceId },
         data: {
           status: "REJECTED",
-          approvedById: session.user.id,
+          approvedById: userId,
           approvedAt: new Date(),
         }
       });
 
       await tx.securityEvent.create({
         data: {
-          userId: session.user.id,
+          userId: userId,
           eventType: "DEVICE_REJECTED",
           description: `Dispositivo ${deviceId} rejeitado: ${reason}`,
         }
