@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { CommandPaletteTrigger } from '@/components/ui/CommandPalette';
 import { 
   LayoutDashboard, 
   Kanban, 
@@ -34,11 +35,14 @@ export function Sidebar() {
 
       <div className="flex-1 overflow-y-auto py-6 px-3 flex flex-col gap-6">
         
+        {/* Search */}
+        <CommandPaletteTrigger />
+
         {/* GROWTH */}
         <div>
           <h3 className="px-3 text-[10px] font-mono tracking-widest text-muted uppercase mb-2">Growth</h3>
           <nav className="flex flex-col gap-0.5">
-            <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" />
+            <NavItem href="/" icon={LayoutDashboard} label="Dashboard" />
             <NavItem href="/crm" icon={Kanban} label="Pipeline" active />
             <NavItem href="/clientes" icon={Users} label="Clientes" />
             <NavItem href="/propostas" icon={FileText} label="Propostas" />

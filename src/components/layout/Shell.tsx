@@ -1,5 +1,6 @@
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { CommandPalette } from "@/components/ui/CommandPalette";
 
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      <CommandPalette />
     </div>
   );
 }
