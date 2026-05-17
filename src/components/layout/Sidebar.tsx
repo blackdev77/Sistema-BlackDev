@@ -15,7 +15,8 @@ import {
   Users,
   Settings,
   LogOut,
-  ShieldAlert
+  ShieldAlert,
+  Globe
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -54,6 +55,15 @@ export function Sidebar() {
           </nav>
         </div>
 
+        {/* CARTEIRA */}
+        <div>
+          <h3 className="px-3 text-[10px] font-mono tracking-widest text-muted uppercase mb-2">Carteira</h3>
+          <nav className="flex flex-col gap-0.5">
+            <NavItem href="/contratos" icon={FileSignature} label="Contratos" />
+            <NavItem href="/suporte" icon={LifeBuoy} label="Suporte & Tickets" />
+          </nav>
+        </div>
+
         {/* FINANCEIRO */}
         <div>
           <h3 className="px-3 text-[10px] font-mono tracking-widest text-muted uppercase mb-2">Financeiro</h3>
@@ -71,6 +81,7 @@ export function Sidebar() {
             <NavItem href="/admin/seguranca" icon={ShieldAlert} label="Segurança (Zero Trust)" />
             <NavItem href="/admin/users" icon={Users} label="Gestão de Equipe" />
             <NavItem href="/admin/logs" icon={FileText} label="Auditoria (Logs)" />
+            <NavItem href="/portal" icon={Globe} label="Portal do Cliente" />
           </nav>
         </div>
 

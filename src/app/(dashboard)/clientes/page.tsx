@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/prisma";
-import { Users, Search, ExternalLink } from "lucide-react";
+import { Users, Search, ExternalLink, Globe } from "lucide-react";
 import Link from "next/link";
 import { ClientFormSlideOver } from "./ClientFormSlideOver";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -48,6 +48,8 @@ export default async function ClientesPage() {
                 <th className="px-6 py-4 font-normal">Empresa</th>
                 <th className="px-6 py-4 font-normal">CNPJ/Doc</th>
                 <th className="px-6 py-4 font-normal">Contato Principal</th>
+                <th className="px-6 py-4 font-normal">Tier</th>
+                <th className="px-6 py-4 font-normal">Portal</th>
                 <th className="px-6 py-4 font-normal">Status</th>
                 <th className="px-6 py-4 font-normal text-right">Ação</th>
               </tr>
@@ -55,7 +57,7 @@ export default async function ClientesPage() {
             <tbody className="divide-y divide-border">
               {clients.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-4">
+                  <td colSpan={7} className="p-4">
                     <EmptyState 
                       icon={Users} 
                       title="Nenhum cliente cadastrado" 
@@ -82,6 +84,22 @@ export default async function ClientesPage() {
                         </div>
                       ) : (
                         <span className="text-xs text-muted-foreground italic">Sem contato</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge variant="outline" className={`text-[10px] ${
+                        client.tier === 'ENTERPRISE' ? 'text-purple-400 border-purple-900' :
+                        client.tier === 'VIP' ? 'text-amber-400 border-amber-900' :
+                        'text-zinc-400 border-zinc-800'
+                      }`}>{client.tier}</Badge>
+                    </td>
+                    <td className="px-6 py-4">
+                      {mainContact?.portalAccess ? (
+                        <span className="flex items-center gap-1.5 text-emerald-400 text-xs font-mono">
+                          <Globe className="w-3 h-3" /> Ativo
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground font-mono">—</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
