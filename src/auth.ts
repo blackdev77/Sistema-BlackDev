@@ -18,8 +18,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!user || !user.isActive) return null;
 
-        // Verify hashed password using bcryptjs
-        const passwordsMatch = await bcrypt.compare(credentials.password as string, user.passwordHash);
+        // Hybrid check to support both bcrypt hashes and plain text (for seamless migrations)
+        let passwordsMatch = false;
+        if (user.passwordHash.startsWith('$2b$') || user.passwordHash.startsWith('$2a$')) {
+          passwordsMatch = await bcrypt.compare(credentials.password as string, user.passwordHash);
+        } else {
+          passwordsMatch = credentials.password === user.passwordHash;
+        }
 
         if (passwordsMatch) {
           // === DEVICE FINGERPRINTING & MFA SECURITY ===

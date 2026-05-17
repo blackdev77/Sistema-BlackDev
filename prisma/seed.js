@@ -61,12 +61,12 @@ async function main() {
   const blackdev = await prisma.user.upsert({
     where: { email: 'admin@blackdev.com' },
     update: {
-      passwordHash: hashedAdmin
+      passwordHash: 'BlackDev#2026!Admin'
     },
     create: {
       name: 'BlackDev OS (SuperAdmin)',
       email: 'admin@blackdev.com',
-      passwordHash: hashedAdmin,
+      passwordHash: 'BlackDev#2026!Admin',
       roleId: adminRole.id,
     },
   })
@@ -76,12 +76,12 @@ async function main() {
     where: { email: 'gustavo@blackdev.com' },
     update: { 
       name: 'Gustavo',
-      passwordHash: hashedGustavo
+      passwordHash: 'BlackDev#2026!Gustavo'
     },
     create: {
       name: 'Gustavo',
       email: 'gustavo@blackdev.com',
-      passwordHash: hashedGustavo,
+      passwordHash: 'BlackDev#2026!Gustavo',
       roleId: adminRole.id,
     },
   })
@@ -91,12 +91,12 @@ async function main() {
     where: { email: 'edmundo@blackdev.com' },
     update: { 
       name: 'Edmundo',
-      passwordHash: hashedEdmundo
+      passwordHash: 'BlackDev#2026!Edmundo'
     },
     create: {
       name: 'Edmundo',
       email: 'edmundo@blackdev.com',
-      passwordHash: hashedEdmundo,
+      passwordHash: 'BlackDev#2026!Edmundo',
       roleId: adminRole.id,
     },
   })
