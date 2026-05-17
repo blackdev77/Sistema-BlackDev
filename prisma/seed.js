@@ -48,17 +48,39 @@ async function main() {
     }
   })
 
-  // 4. Create Master Admin User
-  // In a real system, we'd hash this password (e.g., bcrypt)
-  // For prototype/seed, we'll store a plain or simply hashed placeholder 
-  // since we will build the auth layer next.
-  const admin = await prisma.user.upsert({
+  // 4. Create Master Admin Users
+  // Superlogin BlackDev
+  const blackdev = await prisma.user.upsert({
     where: { email: 'admin@blackdev.com' },
     update: {},
     create: {
-      name: 'Gustavo Admin',
+      name: 'BlackDev OS (SuperAdmin)',
       email: 'admin@blackdev.com',
-      passwordHash: '123456', // WARNING: Placeholder! NextAuth will need bcrypt.
+      passwordHash: '123456',
+      roleId: adminRole.id,
+    },
+  })
+
+  // Gustavo
+  const gustavo = await prisma.user.upsert({
+    where: { email: 'gustavo@blackdev.com' },
+    update: { name: 'Gustavo' },
+    create: {
+      name: 'Gustavo',
+      email: 'gustavo@blackdev.com',
+      passwordHash: '123456',
+      roleId: adminRole.id,
+    },
+  })
+
+  // Edmundo
+  const edmundo = await prisma.user.upsert({
+    where: { email: 'edmundo@blackdev.com' },
+    update: { name: 'Edmundo' },
+    create: {
+      name: 'Edmundo',
+      email: 'edmundo@blackdev.com',
+      passwordHash: '123456',
       roleId: adminRole.id,
     },
   })

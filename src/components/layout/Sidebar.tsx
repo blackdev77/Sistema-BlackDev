@@ -50,8 +50,7 @@ export function Sidebar() {
           <h3 className="px-3 text-[10px] font-mono tracking-widest text-muted uppercase mb-2">Operação</h3>
           <nav className="flex flex-col gap-0.5">
             <NavItem href="/projetos" icon={Briefcase} label="Projetos Ativos" />
-            <NavItem href="/tarefas" icon={CheckSquare} label="Tarefas & Backlog" />
-            <NavItem href="/docs" icon={BookOpen} label="Documentação" />
+            <NavItem href="/tarefas" icon={CheckSquare} label="Tarefas Globais" />
           </nav>
         </div>
 
@@ -62,7 +61,6 @@ export function Sidebar() {
             <NavItem href="/financeiro" icon={PieChart} label="Visão Geral" />
             <NavItem href="/faturas" icon={Receipt} label="Faturas" />
             <NavItem href="/despesas" icon={CreditCard} label="Despesas" />
-            <NavItem href="/assinaturas" icon={Repeat} label="Assinaturas" />
           </nav>
         </div>
 
@@ -70,9 +68,8 @@ export function Sidebar() {
         <div>
           <h3 className="px-3 text-[10px] font-mono tracking-widest text-muted uppercase mb-2">Sistema</h3>
           <nav className="flex flex-col gap-0.5">
-            <NavItem href="/suporte" icon={LifeBuoy} label="Suporte & Tickets" />
+            <NavItem href="/admin/users" icon={Users} label="Gestão de Equipe" />
             <NavItem href="/admin/logs" icon={ShieldAlert} label="Auditoria (Logs)" />
-            <NavItem href="/configuracoes" icon={Settings} label="Configurações" />
           </nav>
         </div>
 

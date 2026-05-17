@@ -12,7 +12,7 @@ export default function PlaceholderPage() {
         </div>
         <h1 className="text-3xl font-serif font-bold text-white tracking-tight">Despesas</h1>
         <p className="text-muted-foreground text-sm">
-          Este módulo está planejado para o próximo ciclo de desenvolvimento (Release 2.0). 
+          Este módulo está planejado para o próximo ciclo de desenvolvimento (Release 2.0).
           A arquitetura de banco de dados já está preparada.
         </p>
         <Link href="/" className="mt-4">
