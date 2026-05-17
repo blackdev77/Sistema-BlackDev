@@ -9,6 +9,10 @@ const createLeadSchema = z.object({
   contactName: z.string().min(2, "Nome do contato é obrigatório"),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   phone: z.string().optional(),
+  city: z.string().optional(),
+  potential: z.enum(["LOW", "MEDIUM", "HIGH"]).optional().default("MEDIUM"),
+  urgency: z.enum(["LOW", "MEDIUM", "HIGH"]).optional().default("MEDIUM"),
+  sourceId: z.string().optional().or(z.literal("")),
   value: z.coerce.number().optional().default(0),
 });
 
@@ -19,6 +23,10 @@ export async function createLead(formData: FormData) {
       contactName: formData.get("contactName") as string,
       email: formData.get("email") as string,
       phone: formData.get("phone") as string,
+      city: formData.get("city") as string,
+      potential: formData.get("potential") as string || "MEDIUM",
+      urgency: formData.get("urgency") as string || "MEDIUM",
+      sourceId: formData.get("sourceId") as string,
       value: formData.get("value"),
     };
 
@@ -30,6 +38,10 @@ export async function createLead(formData: FormData) {
         contactName: parsed.contactName,
         email: parsed.email || null,
         phone: parsed.phone || null,
+        city: parsed.city || null,
+        potential: parsed.potential,
+        urgency: parsed.urgency,
+        sourceId: parsed.sourceId ? parsed.sourceId : null,
         value: parsed.value,
         status: "NOVO"
       }

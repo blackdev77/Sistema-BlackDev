@@ -11,6 +11,7 @@ const createClientSchema = z.object({
   contactName: z.string().min(2, "Nome do contato principal é obrigatório"),
   contactEmail: z.string().email("Email inválido").optional().or(z.literal("")),
   contactPhone: z.string().optional(),
+  tier: z.enum(["STANDARD", "VIP", "ENTERPRISE"]).optional().default("STANDARD"),
 });
 
 export async function createClient(formData: FormData) {
@@ -22,6 +23,7 @@ export async function createClient(formData: FormData) {
       contactName: formData.get("contactName") as string,
       contactEmail: formData.get("contactEmail") as string,
       contactPhone: formData.get("contactPhone") as string,
+      tier: formData.get("tier") as string || "STANDARD",
     };
 
     const parsed = createClientSchema.parse(data);
@@ -31,6 +33,7 @@ export async function createClient(formData: FormData) {
         legalName: parsed.legalName,
         tradeName: parsed.tradeName,
         document: parsed.document || null,
+        tier: parsed.tier,
         contacts: {
           create: {
             name: parsed.contactName,

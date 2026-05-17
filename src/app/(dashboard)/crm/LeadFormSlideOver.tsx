@@ -80,6 +80,15 @@ export function LeadFormSlideOver() {
                 />
               </div>
             </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white">Cidade</label>
+              <input 
+                name="city"
+                className="w-full bg-surface border border-border px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white transition-shadow"
+                placeholder="Ex: São Paulo, SP"
+              />
+            </div>
           </div>
 
           <div className="space-y-4 pt-4 border-t border-border/50">
@@ -95,6 +104,33 @@ export function LeadFormSlideOver() {
                 className="w-full bg-surface border border-border px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white transition-shadow"
                 placeholder="5000"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white">Potencial</label>
+                <select 
+                  name="potential"
+                  className="w-full bg-surface border border-border px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white transition-shadow"
+                  defaultValue="MEDIUM"
+                >
+                  <option value="LOW">Baixo</option>
+                  <option value="MEDIUM">Médio</option>
+                  <option value="HIGH">Alto</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white">Urgência</label>
+                <select 
+                  name="urgency"
+                  className="w-full bg-surface border border-border px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white transition-shadow"
+                  defaultValue="MEDIUM"
+                >
+                  <option value="LOW">Baixa</option>
+                  <option value="MEDIUM">Média</option>
+                  <option value="HIGH">Alta</option>
+                </select>
+              </div>
             </div>
           </div>
 

@@ -69,6 +69,19 @@ export function ClientFormSlideOver() {
                 placeholder="00.000.000/0001-00"
               />
             </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white">Classificação (Tier)</label>
+              <select 
+                name="tier"
+                className="w-full bg-surface border border-border px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white transition-shadow"
+                defaultValue="STANDARD"
+              >
+                <option value="STANDARD">Standard</option>
+                <option value="VIP">VIP</option>
+                <option value="ENTERPRISE">Enterprise</option>
+              </select>
+            </div>
           </div>
 
           <div className="space-y-4 pt-4 border-t border-border/50">
