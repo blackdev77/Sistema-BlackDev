@@ -5,25 +5,15 @@ import { authenticate } from '@/lib/actions';
 import { Button } from '@/components/ui/Button';
 import { useEffect, useState } from 'react';
 
-// Basic fingerprint generation for prototype
-function generateFingerprint() {
+// Persistent Device ID generation (resilient to browser updates)
+function getOrGenerateDeviceID() {
   if (typeof window === 'undefined') return 'unknown';
-  const data = [
-    navigator.userAgent,
-    navigator.language,
-    screen.colorDepth,
-    screen.width + 'x' + screen.height,
-    new Date().getTimezoneOffset()
-  ].join('||');
-  
-  // Very simple hash for the string
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    const char = data.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+  let deviceId = localStorage.getItem('blackdev_device_id');
+  if (!deviceId) {
+    deviceId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+    localStorage.setItem('blackdev_device_id', deviceId);
   }
-  return Math.abs(hash).toString(16);
+  return deviceId;
 }
 
 export default function LoginForm() {
@@ -32,7 +22,7 @@ export default function LoginForm() {
   const [userAgent, setUserAgent] = useState('');
 
   useEffect(() => {
-    setFingerprint(generateFingerprint());
+    setFingerprint(getOrGenerateDeviceID());
     setUserAgent(navigator.userAgent);
   }, []);
 

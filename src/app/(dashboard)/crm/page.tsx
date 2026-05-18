@@ -4,13 +4,24 @@ import { prisma } from "@/lib/prisma";
 import { LeadFormSlideOver } from "./LeadFormSlideOver";
 import { KanbanBoard } from "./KanbanBoard";
 import { Button } from "@/components/ui/Button";
+import { Pagination } from "@/components/ui/Pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function CRMPage() {
-  const allLeads = await prisma.lead.findMany({
-    orderBy: { createdAt: 'desc' }
-  });
+export default async function CRMPage(props: { searchParams?: Promise<{ page?: string }> }) {
+  const searchParams = await props.searchParams;
+  const page = Number(searchParams?.page) || 1;
+  const take = 100; // Kanban boards usually load more items
+  const skip = (page - 1) * take;
+
+  const [allLeads, total] = await Promise.all([
+    prisma.lead.findMany({
+      skip,
+      take,
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.lead.count()
+  ]);
 
   const columns = [
     { id: "NOVO", title: "Novo", leads: allLeads.filter(l => l.status === "NOVO") },
@@ -48,8 +59,13 @@ export default async function CRMPage() {
       </div>
 
       {/* Kanban Board Area */}
-      <div className="flex-1 overflow-hidden">
-        <KanbanBoard initialColumns={columns} />
+      <div className="flex-1 overflow-hidden flex flex-col gap-2">
+        <div className="flex-1 overflow-hidden">
+          <KanbanBoard initialColumns={columns} />
+        </div>
+        <div className="shrink-0 bg-surface/50 rounded p-1">
+          <Pagination total={total} take={take} />
+        </div>
       </div>
       
     </div>

@@ -8,7 +8,11 @@ export const authConfig = {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const isOnLogin = nextUrl.pathname.startsWith('/login');
+      const isPortal = nextUrl.pathname.startsWith('/portal');
       
+      // Allow portal to handle its own auth completely
+      if (isPortal) return true;
+
       if (isOnLogin) {
         if (isLoggedIn) return Response.redirect(new URL('/', nextUrl));
         return true;

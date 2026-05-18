@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { MoreHorizontal } from "lucide-react";
 import { updateLeadStatus } from "@/app/actions/updateLeadStatus";
 import { toast } from "sonner";
+import { LeadDetailsSlideOver } from "./LeadDetailsSlideOver";
 
 type Lead = {
   id: string;
@@ -16,6 +17,12 @@ type Lead = {
   contactName: string;
   value: number | null;
   status: string;
+  email: string | null;
+  phone: string | null;
+  city: string | null;
+  potential: string;
+  urgency: string;
+  convertedToClientId: string | null;
 };
 
 type Column = {
@@ -24,7 +31,7 @@ type Column = {
   leads: Lead[];
 };
 
-function SortableLeadCard({ lead }: { lead: Lead }) {
+function SortableLeadCard({ lead, onSelect }: { lead: Lead; onSelect: (lead: Lead) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id });
 
   const style = {
@@ -35,11 +42,19 @@ function SortableLeadCard({ lead }: { lead: Lead }) {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none pb-3">
-      <Card className="cursor-grab active:cursor-grabbing hover:border-border-hover transition-colors group">
+      <Card className="cursor-grab active:cursor-grabbing hover:border-white/20 transition-colors group">
         <CardContent className="p-4 flex flex-col gap-3">
           <div className="flex justify-between items-start">
             <Badge variant="outline" className="text-muted-foreground border-border/50">Lead</Badge>
-            <button className="text-muted-foreground hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(lead);
+              }}
+              className="text-muted-foreground hover:text-white opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-surface/50 rounded"
+              title="Ver detalhes"
+            >
               <MoreHorizontal className="w-4 h-4" />
             </button>
           </div>
@@ -59,7 +74,7 @@ function SortableLeadCard({ lead }: { lead: Lead }) {
   );
 }
 
-function KanbanColumn({ column }: { column: Column }) {
+function KanbanColumn({ column, onSelect }: { column: Column; onSelect: (lead: Lead) => void }) {
   return (
     <div className="w-[300px] flex flex-col h-full bg-surface/10 rounded-lg p-2">
       <div className="flex items-center justify-between py-2 mb-2 shrink-0 border-b border-border/50 px-2">
@@ -70,7 +85,7 @@ function KanbanColumn({ column }: { column: Column }) {
       <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-2 pt-2">
         <SortableContext items={column.leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
           {column.leads.map(lead => (
-            <SortableLeadCard key={lead.id} lead={lead} />
+            <SortableLeadCard key={lead.id} lead={lead} onSelect={onSelect} />
           ))}
         </SortableContext>
       </div>
@@ -81,6 +96,7 @@ function KanbanColumn({ column }: { column: Column }) {
 export function KanbanBoard({ initialColumns }: { initialColumns: Column[] }) {
   const [columns, setColumns] = useState(initialColumns);
   const [isPending, startTransition] = useTransition();
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -139,15 +155,25 @@ export function KanbanBoard({ initialColumns }: { initialColumns: Column[] }) {
   };
 
   return (
-    <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-      <div className="flex gap-4 h-full pb-4 min-w-max">
-        {columns.map((col) => (
-          // We make the whole column a droppable zone by giving it an ID that we check in handleDragEnd
-          <div key={col.id} id={col.id} className="h-full">
-            <KanbanColumn column={col} />
-          </div>
-        ))}
-      </div>
-    </DndContext>
+    <>
+      <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+        <div className="flex gap-4 h-full pb-4 min-w-max">
+          {columns.map((col) => (
+            // We make the whole column a droppable zone by giving it an ID that we check in handleDragEnd
+            <div key={col.id} id={col.id} className="h-full">
+              <KanbanColumn column={col} onSelect={setSelectedLead} />
+            </div>
+          ))}
+        </div>
+      </DndContext>
+
+      {selectedLead && (
+        <LeadDetailsSlideOver 
+          lead={selectedLead}
+          isOpen={!!selectedLead}
+          onClose={() => setSelectedLead(null)}
+        />
+      )}
+    </>
   );
 }

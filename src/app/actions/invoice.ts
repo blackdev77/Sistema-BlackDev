@@ -16,13 +16,13 @@ export async function createInvoice(formData: FormData) {
     const data = {
       clientId: formData.get("clientId") as string,
       description: formData.get("description") as string,
-      amount: formData.get("amount"),
+      amount: formData.get("amount") as string,
       dueDate: formData.get("dueDate") as string,
     };
 
     const parsed = createInvoiceSchema.parse(data);
 
-    await prisma.invoice.create({
+    const invoice = await prisma.invoice.create({
       data: {
         clientId: parsed.clientId,
         description: parsed.description,
@@ -33,12 +33,74 @@ export async function createInvoice(formData: FormData) {
     });
 
     revalidatePath("/faturas");
-    return { success: true };
+    revalidatePath("/financeiro");
+    revalidatePath("/");
+
+    return { success: true, invoiceId: invoice.id };
   } catch (error) {
     console.error("Error creating invoice:", error);
     if (error instanceof z.ZodError) {
       return { success: false, error: error.issues[0].message };
     }
     return { success: false, error: "Erro interno ao criar fatura." };
+  }
+}
+
+export async function markInvoiceAsPaid(invoiceId: string, paymentMethod: string = "PIX") {
+  try {
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: invoiceId }
+    });
+
+    if (!invoice) {
+      return { success: false, error: "Fatura não encontrada." };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Update invoice to PAID
+      await tx.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          status: "PAID",
+          paidAt: new Date()
+        }
+      });
+
+      // 2. Create payment record
+      await tx.payment.create({
+        data: {
+          invoiceId: invoiceId,
+          amount: invoice.amount,
+          method: paymentMethod,
+          paidAt: new Date()
+        }
+      });
+    });
+
+    revalidatePath("/faturas");
+    revalidatePath("/financeiro");
+    revalidatePath("/");
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error marking invoice as paid:", error);
+    return { success: false, error: "Erro interno ao liquidar fatura." };
+  }
+}
+
+export async function deleteInvoice(invoiceId: string) {
+  try {
+    await prisma.invoice.update({
+      where: { id: invoiceId },
+      data: { deletedAt: new Date() }
+    });
+
+    revalidatePath("/faturas");
+    revalidatePath("/financeiro");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting invoice:", error);
+    return { success: false, error: "Erro interno ao excluir fatura." };
   }
 }

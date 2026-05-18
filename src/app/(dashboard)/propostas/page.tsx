@@ -7,16 +7,22 @@ import { ProposalFormSlideOver } from "./ProposalFormSlideOver";
 import { AcceptProposalButton } from "./AcceptProposalButton";
 
 export default async function PropostasPage() {
-  const proposals = await prisma.proposal.findMany({
-    include: { lead: true, client: true },
-    orderBy: { createdAt: "desc" }
-  });
-
-  const leads = await prisma.lead.findMany({
-    where: { status: { not: "FECHADO" } },
-    select: { id: true, companyName: true },
-    orderBy: { companyName: "asc" }
-  });
+  const [proposals, leads, clients] = await Promise.all([
+    prisma.proposal.findMany({
+      include: { lead: true, client: true },
+      orderBy: { createdAt: "desc" }
+    }),
+    prisma.lead.findMany({
+      where: { status: { not: "FECHADO" } },
+      select: { id: true, companyName: true },
+      orderBy: { companyName: "asc" }
+    }),
+    prisma.client.findMany({
+      select: { id: true, tradeName: true },
+      where: { status: "ACTIVE" },
+      orderBy: { tradeName: "asc" }
+    })
+  ]);
 
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden bg-background">
@@ -26,7 +32,7 @@ export default async function PropostasPage() {
           <h1 className="font-serif text-2xl font-bold text-white tracking-tight">Propostas Comerciais</h1>
           <p className="text-muted-foreground mt-1 font-mono text-xs uppercase tracking-widest">Orçamentos e Negociações</p>
         </div>
-        <ProposalFormSlideOver leads={leads} />
+        <ProposalFormSlideOver leads={leads} clients={clients} />
       </header>
 
       {/* Main Content */}

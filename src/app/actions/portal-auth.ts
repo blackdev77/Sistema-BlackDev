@@ -10,6 +10,12 @@ function generateToken() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+import { SignJWT, jwtVerify } from "jose";
+
+const PORTAL_SECRET = new TextEncoder().encode(
+  process.env.AUTH_SECRET || 'super-secret-fallback-key'
+);
+
 export async function portalLogin(prevState: string | undefined, formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
@@ -28,16 +34,20 @@ export async function portalLogin(prevState: string | undefined, formData: FormD
     return "Senha incorreta.";
   }
 
-  // Create a portal session cookie
-  const token = generateToken();
-  const cookieStore = await cookies();
-  cookieStore.set("portal_session", JSON.stringify({
-    token,
+  // Create a portal session cookie using JWT
+  const jwt = await new SignJWT({
     contactId: contact.id,
     clientId: contact.clientId,
     contactName: contact.name,
     clientName: contact.client.tradeName,
-  }), {
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('24h')
+    .sign(PORTAL_SECRET);
+
+  const cookieStore = await cookies();
+  cookieStore.set("portal_session", jwt, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -60,8 +70,8 @@ export async function getPortalSession() {
   if (!raw?.value) return null;
 
   try {
-    return JSON.parse(raw.value) as {
-      token: string;
+    const { payload } = await jwtVerify(raw.value, PORTAL_SECRET);
+    return payload as {
       contactId: string;
       clientId: string;
       contactName: string;

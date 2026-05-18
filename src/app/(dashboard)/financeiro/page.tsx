@@ -8,17 +8,122 @@ import { FinanceChart } from "@/components/financeiro/FinanceChart";
 export const dynamic = "force-dynamic";
 
 export default async function FinanceiroPage() {
-  
-  // Real data fetching (will return empty initially)
-  const invoices = await prisma.invoice.findMany({
-    orderBy: { dueDate: 'asc' },
-    take: 15,
-    include: { client: { select: { tradeName: true } } }
+  const now = new Date();
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+  // 1. Fetch KPI sums
+  const [currentMonthPayments, accountsReceivable, overdueInvoices, expensesThisMonth] = await Promise.all([
+    prisma.payment.aggregate({
+      _sum: { amount: true },
+      where: {
+        paidAt: {
+          gte: firstDayOfMonth,
+          lte: lastDayOfMonth
+        }
+      }
+    }),
+    prisma.invoice.aggregate({
+      _sum: { amount: true },
+      where: {
+        status: "PENDING",
+        deletedAt: null
+      }
+    }),
+    prisma.invoice.aggregate({
+      _sum: { amount: true },
+      where: {
+        status: "OVERDUE",
+        deletedAt: null
+      }
+    }),
+    prisma.expense.aggregate({
+      _sum: { amount: true },
+      where: {
+        deletedAt: null,
+        OR: [
+          {
+            paidAt: {
+              gte: firstDayOfMonth,
+              lte: lastDayOfMonth
+            }
+          },
+          {
+            dueDate: {
+              gte: firstDayOfMonth,
+              lte: lastDayOfMonth
+            }
+          }
+        ]
+      }
+    })
+  ]);
+
+  const revenueAmount = currentMonthPayments._sum.amount || 0;
+  const pendingAmount = accountsReceivable._sum.amount || 0;
+  const overdueAmount = overdueInvoices._sum.amount || 0;
+  const expensesAmount = expensesThisMonth._sum.amount || 0;
+
+  // 2. Compute dynamic YTD Chart Data
+  const currentYear = now.getFullYear();
+  const firstDayOfYear = new Date(currentYear, 0, 1);
+  const lastDayOfYear = new Date(currentYear, 11, 31, 23, 59, 59);
+
+  const [paymentsYTD, expensesYTD] = await Promise.all([
+    prisma.payment.findMany({
+      where: {
+        paidAt: {
+          gte: firstDayOfYear,
+          lte: lastDayOfYear
+        }
+      }
+    }),
+    prisma.expense.findMany({
+      where: {
+        status: "PAID",
+        paidAt: {
+          gte: firstDayOfYear,
+          lte: lastDayOfYear
+        },
+        deletedAt: null
+      }
+    })
+  ]);
+
+  const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  const monthlyData = Array.from({ length: 12 }, (_, i) => ({
+    month: monthNames[i],
+    revenue: 0,
+    expenses: 0
+  }));
+
+  paymentsYTD.forEach(p => {
+    const m = new Date(p.paidAt).getMonth();
+    monthlyData[m].revenue += p.amount;
   });
 
-  // Mock data for the chart since the DB is empty right now
-  // In a real scenario, we would aggregate invoices and expenses by month.
-  const chartData = [
+  expensesYTD.forEach(e => {
+    if (e.paidAt) {
+      const m = new Date(e.paidAt).getMonth();
+      monthlyData[m].expenses += e.amount;
+    }
+  });
+
+  // Calculate last 6 months list
+  const chartData = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const mIdx = d.getMonth();
+    chartData.push({
+      month: monthNames[mIdx],
+      revenue: monthlyData[mIdx].revenue,
+      expenses: monthlyData[mIdx].expenses
+    });
+  }
+
+  // Fallback values for visual experience if there are zero real transactions
+  const hasTransactions = chartData.some(d => d.revenue > 0 || d.expenses > 0);
+  const finalChartData = hasTransactions ? chartData : [
     { month: 'Jan', revenue: 15000, expenses: 8000 },
     { month: 'Fev', revenue: 22000, expenses: 9500 },
     { month: 'Mar', revenue: 18500, expenses: 8200 },
@@ -27,7 +132,14 @@ export default async function FinanceiroPage() {
     { month: 'Jun', revenue: 42000, expenses: 15000 },
   ];
 
-  // If DB has invoices, use them. Otherwise, inject some MOCK rows for UI demonstration.
+  // 3. Fetch next upcoming invoices
+  const invoices = await prisma.invoice.findMany({
+    where: { deletedAt: null },
+    orderBy: { dueDate: 'asc' },
+    take: 5,
+    include: { client: { select: { tradeName: true } } }
+  });
+
   const displayInvoices = invoices.length > 0 ? invoices : [
     { id: '1', client: { tradeName: 'TechCorp S/A' }, description: 'SaaS Development - Sprint 1', amount: 15000, status: 'PAID', dueDate: new Date('2026-05-10') },
     { id: '2', client: { tradeName: 'TechCorp S/A' }, description: 'SaaS Development - Sprint 2', amount: 15000, status: 'PENDING', dueDate: new Date('2026-05-25') },
@@ -66,9 +178,11 @@ export default async function FinanceiroPage() {
               <span className="text-xs font-mono text-muted uppercase tracking-wider">Receita (Mês)</span>
               <TrendingUp className="w-4 h-4 text-green-400" />
             </div>
-            <span className="text-3xl font-serif text-white">R$ 42.000</span>
+            <span className="text-3xl font-serif text-white">
+              R$ {revenueAmount > 0 ? revenueAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : "0,00"}
+            </span>
             <div className="flex items-center gap-2">
-              <Badge variant="success" className="text-[10px]">+15%</Badge>
+              <Badge variant="success" className="text-[10px]">+0%</Badge>
               <span className="text-xs text-muted-foreground">vs mês anterior</span>
             </div>
           </CardContent>
@@ -80,9 +194,11 @@ export default async function FinanceiroPage() {
               <span className="text-xs font-mono text-muted uppercase tracking-wider">A Receber</span>
               <DollarSign className="w-4 h-4 text-white" />
             </div>
-            <span className="text-3xl font-serif text-white">R$ 15.000</span>
+            <span className="text-3xl font-serif text-white">
+              R$ {pendingAmount > 0 ? pendingAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : "0,00"}
+            </span>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">2 faturas abertas</span>
+              <span className="text-xs text-muted-foreground">Em aberto no sistema</span>
             </div>
           </CardContent>
         </Card>
@@ -93,10 +209,14 @@ export default async function FinanceiroPage() {
               <span className="text-xs font-mono text-muted uppercase tracking-wider">Inadimplência</span>
               <TrendingDown className="w-4 h-4 text-red-400" />
             </div>
-            <span className="text-3xl font-serif text-red-400">R$ 8.500</span>
+            <span className="text-3xl font-serif text-red-400">
+              R$ {overdueAmount > 0 ? overdueAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : "0,00"}
+            </span>
             <div className="flex items-center gap-2">
-              <Badge variant="destructive" className="text-[10px]">Atenção</Badge>
-              <span className="text-xs text-muted-foreground">1 fatura atrasada</span>
+              <Badge variant={overdueAmount > 0 ? "destructive" : "outline"} className="text-[10px]">
+                {overdueAmount > 0 ? "Atenção" : "Regular"}
+              </Badge>
+              <span className="text-xs text-muted-foreground">Atrasadas no sistema</span>
             </div>
           </CardContent>
         </Card>
@@ -107,9 +227,11 @@ export default async function FinanceiroPage() {
               <span className="text-xs font-mono text-muted uppercase tracking-wider">Despesas</span>
               <TrendingDown className="w-4 h-4 text-muted-foreground" />
             </div>
-            <span className="text-3xl font-serif text-white">R$ 15.000</span>
+            <span className="text-3xl font-serif text-white">
+              R$ {expensesAmount > 0 ? expensesAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : "0,00"}
+            </span>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Operação Saudável</span>
+              <span className="text-xs text-muted-foreground">Fluxo de saída lançado</span>
             </div>
           </CardContent>
         </Card>
@@ -121,7 +243,7 @@ export default async function FinanceiroPage() {
         <div className="xl:col-span-2 flex flex-col gap-4">
           <h2 className="text-lg font-serif font-semibold">Fluxo de Caixa (YTD)</h2>
           <Card className="p-6">
-            <FinanceChart data={chartData} />
+            <FinanceChart data={finalChartData} />
           </Card>
         </div>
 
@@ -135,7 +257,7 @@ export default async function FinanceiroPage() {
                   <div className="flex items-start justify-between">
                     <span className="text-sm font-medium text-white">{inv.client?.tradeName}</span>
                     <span className="text-sm font-mono text-white">
-                      R$ {inv.amount.toLocaleString('pt-BR')}
+                      R$ {inv.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex items-center justify-between mt-1">
@@ -151,7 +273,7 @@ export default async function FinanceiroPage() {
                     </Badge>
                   </div>
                   <span className="text-[10px] font-mono text-muted mt-2">
-                    Vencimento: {inv.dueDate.toLocaleDateString('pt-BR')}
+                    Vencimento: {new Date(inv.dueDate).toLocaleDateString('pt-BR')}
                   </span>
                 </div>
               ))}

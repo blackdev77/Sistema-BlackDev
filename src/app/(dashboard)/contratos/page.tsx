@@ -3,14 +3,27 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/prisma";
 import { FileSignature, Plus, Search, ExternalLink } from "lucide-react";
+import { ContractFormSlideOver } from "./ContractFormSlideOver";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContratosPage() {
-  const contracts = await prisma.contract.findMany({
-    include: { client: { select: { tradeName: true } } },
-    orderBy: { createdAt: 'desc' }
-  });
+  const [contracts, clients, projects] = await Promise.all([
+    prisma.contract.findMany({
+      include: { client: { select: { tradeName: true } } },
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.client.findMany({
+      select: { id: true, tradeName: true },
+      where: { status: 'ACTIVE' },
+      orderBy: { tradeName: 'asc' }
+    }),
+    prisma.project.findMany({
+      select: { id: true, name: true },
+      where: { status: { not: 'CANCELLED' } },
+      orderBy: { name: 'asc' }
+    })
+  ]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -31,10 +44,7 @@ export default async function ContratosPage() {
               className="bg-surface border border-border text-sm pl-9 pr-4 py-2 w-64 focus:outline-none focus:ring-1 focus:ring-white transition-shadow text-white placeholder:text-muted-foreground"
             />
           </div>
-          <Button variant="primary" className="gap-2">
-            <Plus className="w-4 h-4" />
-            Novo Contrato
-          </Button>
+          <ContractFormSlideOver clients={clients} projects={projects} />
         </div>
       </div>
 

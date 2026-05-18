@@ -3,21 +3,33 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { ProposalService } from "@/lib/services/ProposalService";
 
 const createProposalSchema = z.object({
   title: z.string().min(2, "Título é obrigatório"),
-  leadId: z.string().optional(),
+  leadId: z.string().optional().nullable().or(z.literal("")),
+  clientId: z.string().optional().nullable().or(z.literal("")),
   totalValue: z.coerce.number().min(1, "O valor deve ser maior que zero"),
   paymentTerms: z.string().min(5, "Termos de pagamento obrigatórios"),
+  validUntil: z.date().optional().nullable(),
+  status: z.enum(["DRAFT", "SENT", "VIEWED", "ACCEPTED", "REJECTED"]).default("DRAFT"),
 });
 
 export async function createProposal(formData: FormData) {
   try {
+    const validUntilRaw = formData.get("validUntil") as string;
+    const statusRaw = formData.get("status") as string || "DRAFT";
+    const leadIdRaw = formData.get("leadId") as string;
+    const clientIdRaw = formData.get("clientId") as string;
+
     const data = {
       title: formData.get("title") as string,
-      leadId: formData.get("leadId") as string,
+      leadId: leadIdRaw === "" ? null : leadIdRaw,
+      clientId: clientIdRaw === "" ? null : clientIdRaw,
       totalValue: formData.get("totalValue"),
       paymentTerms: formData.get("paymentTerms") as string,
+      validUntil: validUntilRaw ? new Date(validUntilRaw) : null,
+      status: statusRaw,
     };
 
     const parsed = createProposalSchema.parse(data);
@@ -26,14 +38,19 @@ export async function createProposal(formData: FormData) {
       data: {
         title: parsed.title,
         leadId: parsed.leadId || null,
+        clientId: parsed.clientId || null,
         totalValue: parsed.totalValue,
         paymentTerms: parsed.paymentTerms,
-        status: "DRAFT"
+        validUntil: parsed.validUntil,
+        status: parsed.status,
       }
     });
 
     revalidatePath("/propostas");
     revalidatePath("/crm");
+    revalidatePath("/clientes");
+    revalidatePath("/");
+    
     return { success: true, proposalId: proposal.id };
   } catch (error) {
     console.error("Error creating proposal:", error);
@@ -47,84 +64,35 @@ export async function createProposal(formData: FormData) {
 // Action for the Fluxo Lead -> Cliente -> Projeto
 export async function acceptProposal(proposalId: string) {
   try {
-    const proposal = await prisma.proposal.findUnique({
-      where: { id: proposalId },
-      include: { lead: true }
-    });
-
-    if (!proposal) throw new Error("Proposta não encontrada");
-
-    // Use a transaction to convert Lead -> Client -> Project -> Contract
-    await prisma.$transaction(async (tx) => {
-      let clientId = proposal.clientId;
-
-      // 1. Convert Lead to Client if it's tied to a Lead
-      if (proposal.leadId && !clientId) {
-        const client = await tx.client.create({
-          data: {
-            legalName: proposal.lead!.companyName,
-            tradeName: proposal.lead!.companyName,
-            contacts: {
-              create: {
-                name: proposal.lead!.contactName,
-                email: proposal.lead!.email,
-                phone: proposal.lead!.phone,
-                isMain: true
-              }
-            }
-          }
-        });
-        clientId = client.id;
-
-        await tx.lead.update({
-          where: { id: proposal.leadId },
-          data: { 
-            status: "FECHADO", 
-            convertedToClientId: client.id 
-          }
-        });
-      }
-
-      if (!clientId) throw new Error("Não foi possível resolver o cliente.");
-
-      // 2. Mark Proposal as ACCEPTED
-      await tx.proposal.update({
-        where: { id: proposalId },
-        data: { status: "ACCEPTED", clientId }
-      });
-
-      // 3. Create Project
-      const project = await tx.project.create({
-        data: {
-          clientId,
-          proposalId: proposal.id,
-          name: proposal.title,
-          status: "PLANNING",
-          description: `Projeto gerado automaticamente a partir da proposta ${proposal.title}`
-        }
-      });
-
-      // 4. Create Draft Contract
-      await tx.contract.create({
-        data: {
-          clientId,
-          projectId: project.id,
-          title: `Contrato: ${proposal.title}`,
-          value: proposal.totalValue,
-          status: "DRAFT"
-        }
-      });
-
-    });
+    await ProposalService.acceptProposal(proposalId);
 
     revalidatePath("/propostas");
     revalidatePath("/projetos");
     revalidatePath("/clientes");
     revalidatePath("/crm");
+    revalidatePath("/portal");
     
     return { success: true };
   } catch (error: any) {
     console.error("Error accepting proposal:", error);
     return { success: false, error: error.message || "Erro ao aprovar proposta" };
+  }
+}
+
+export async function rejectProposal(proposalId: string) {
+  try {
+    await prisma.proposal.update({
+      where: { id: proposalId },
+      data: { status: "REJECTED" }
+    });
+
+    revalidatePath("/propostas");
+    revalidatePath("/crm");
+    revalidatePath("/portal");
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error rejecting proposal:", error);
+    return { success: false, error: "Erro ao rejeitar proposta" };
   }
 }

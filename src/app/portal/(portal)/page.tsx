@@ -3,7 +3,9 @@ import { getPortalSession } from "@/app/actions/portal-auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Briefcase, Receipt, FileSignature, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { Briefcase, Receipt, FileSignature, Clock, CheckCircle2, AlertCircle, FileText } from "lucide-react";
+import { ProposalActions } from "./ProposalActions";
+import { ContractDownload } from "./ContractDownload";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +16,7 @@ export default async function PortalDashboard() {
   const clientId = session.clientId;
 
   // Load all client data in parallel
-  const [projects, invoices, contracts] = await Promise.all([
+  const [projects, invoices, contracts, proposals] = await Promise.all([
     prisma.project.findMany({
       where: { clientId },
       include: {
@@ -28,6 +30,10 @@ export default async function PortalDashboard() {
       orderBy: { dueDate: "asc" },
     }),
     prisma.contract.findMany({
+      where: { clientId },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.proposal.findMany({
       where: { clientId },
       orderBy: { createdAt: "desc" },
     }),
@@ -92,6 +98,31 @@ export default async function PortalDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Pending Invoices Banner */}
+      {totalPending > 0 && (
+        <Card className="border-amber-900/50 bg-amber-950/10">
+          <CardContent className="p-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-400" />
+              <div>
+                <p className="text-sm font-medium text-white">
+                  Você possui faturas em aberto totalizando{" "}
+                  <span className="font-mono">R$ {totalPending.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Por favor, verifique a seção de Faturas abaixo para regularizar.
+                </p>
+              </div>
+            </div>
+            <a href="#faturas">
+              <Badge variant="outline" className="text-amber-400 border-amber-900 bg-amber-950/20 hover:bg-amber-900/40 cursor-pointer transition-colors">
+                Ver Faturas
+              </Badge>
+            </a>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Projects */}
       <section className="space-y-4">
@@ -175,8 +206,59 @@ export default async function PortalDashboard() {
         )}
       </section>
 
-      {/* Invoices */}
+      {/* Proposals */}
       <section className="space-y-4">
+        <h2 className="text-xl font-serif font-bold text-white border-b border-border/50 pb-2">
+          Propostas Comerciais
+        </h2>
+
+        {proposals.length === 0 ? (
+          <div className="bg-surface border border-border p-8 text-center">
+            <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm">Nenhuma proposta comercial recente.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {proposals.map((p) => {
+              const statusMap: Record<string, { label: string; color: string }> = {
+                DRAFT: { label: "Rascunho", color: "text-zinc-400 border-zinc-800" },
+                SENT: { label: "Enviada", color: "text-blue-400 border-blue-900 bg-blue-950/20" },
+                VIEWED: { label: "Visualizada", color: "text-purple-400 border-purple-900 bg-purple-950/20" },
+                ACCEPTED: { label: "Aceita", color: "text-emerald-400 border-emerald-900 bg-emerald-950/20" },
+                REJECTED: { label: "Rejeitada", color: "text-red-400 border-red-900 bg-red-950/20" },
+              };
+              const st = statusMap[p.status] || { label: p.status, color: "" };
+
+              return (
+                <Card key={p.id}>
+                  <CardContent className="p-6 flex flex-col justify-between h-full min-h-[160px]">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <h3 className="font-serif text-base font-bold text-white">{p.title}</h3>
+                        <p className="text-xs font-mono text-muted-foreground">
+                          Valor: R$ {p.totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </p>
+                        {p.paymentTerms && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            <span className="font-mono text-[10px] uppercase">Condições:</span> {p.paymentTerms}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant="outline" className={st.color}>
+                        {st.label}
+                      </Badge>
+                    </div>
+                    <ProposalActions proposalId={p.id} status={p.status} />
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Invoices */}
+      <section id="faturas" className="space-y-4">
         <h2 className="text-xl font-serif font-bold text-white border-b border-border/50 pb-2">
           Faturas
         </h2>
@@ -251,18 +333,21 @@ export default async function PortalDashboard() {
                       R$ {c.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      c.status === "SIGNED"
-                        ? "text-emerald-400 border-emerald-900"
-                        : c.status === "DRAFT"
-                          ? "text-zinc-400 border-zinc-800"
-                          : "text-amber-400 border-amber-900"
-                    }
-                  >
-                    {c.status === "SIGNED" ? "Assinado" : c.status === "DRAFT" ? "Rascunho" : "Pendente"}
-                  </Badge>
+                  <div className="flex items-center gap-3">
+                    <Badge
+                      variant="outline"
+                      className={
+                        c.status === "SIGNED"
+                          ? "text-emerald-400 border-emerald-900"
+                          : c.status === "DRAFT"
+                            ? "text-zinc-400 border-zinc-800"
+                            : "text-amber-400 border-amber-900"
+                      }
+                    >
+                      {c.status === "SIGNED" ? "Assinado" : c.status === "DRAFT" ? "Rascunho" : "Pendente"}
+                    </Badge>
+                    {c.status === "SIGNED" && <ContractDownload contractTitle={c.title} />}
+                  </div>
                 </CardContent>
               </Card>
             ))}

@@ -4,20 +4,33 @@ import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/prisma";
 import { Receipt, Search, Filter } from "lucide-react";
 import { InvoiceFormSlideOver } from "./InvoiceFormSlideOver";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { Pagination } from "@/components/ui/Pagination";
+import { InvoiceListTable } from "./InvoiceListTable";
 
 export const dynamic = "force-dynamic";
 
-export default async function FaturasPage() {
-  const invoices = await prisma.invoice.findMany({
-    include: { client: { select: { tradeName: true } } },
-    orderBy: { dueDate: 'asc' }
-  });
+export default async function FaturasPage(props: { searchParams?: Promise<{ page?: string }> }) {
+  const searchParams = await props.searchParams;
+  const page = Number(searchParams?.page) || 1;
+  const take = 20;
+  const skip = (page - 1) * take;
 
-  const clients = await prisma.client.findMany({
-    select: { id: true, tradeName: true },
-    orderBy: { tradeName: 'asc' }
-  });
+  const [invoices, total, clients] = await Promise.all([
+    prisma.invoice.findMany({
+      skip,
+      take,
+      include: { 
+        client: { select: { tradeName: true } },
+        payments: true
+      },
+      orderBy: { dueDate: 'asc' }
+    }),
+    prisma.invoice.count(),
+    prisma.client.findMany({
+      select: { id: true, tradeName: true },
+      orderBy: { tradeName: 'asc' }
+    })
+  ]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -47,46 +60,8 @@ export default async function FaturasPage() {
       </div>
 
       <Card>
-        <div className="w-full overflow-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-[10px] font-mono text-muted uppercase tracking-wider border-b border-border bg-surface/50">
-              <tr>
-                <th className="px-6 py-4 font-normal">Descrição</th>
-                <th className="px-6 py-4 font-normal">Cliente</th>
-                <th className="px-6 py-4 font-normal">Valor</th>
-                <th className="px-6 py-4 font-normal">Vencimento</th>
-                <th className="px-6 py-4 font-normal text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {invoices.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-4">
-                    <EmptyState 
-                      icon={Receipt} 
-                      title="Nenhuma fatura lançada" 
-                      description="Seu controle financeiro está limpo. Crie uma nova fatura para começar a acompanhar seus recebimentos." 
-                    />
-                  </td>
-                </tr>
-              ) : invoices.map((invoice) => (
-                <tr key={invoice.id} className="hover:bg-surface/80 transition-colors">
-                  <td className="px-6 py-4 font-medium text-white">{invoice.description}</td>
-                  <td className="px-6 py-4 text-muted-foreground">{invoice.client.tradeName}</td>
-                  <td className="px-6 py-4 font-mono text-xs text-white">R$ {invoice.amount.toLocaleString('pt-BR')}</td>
-                  <td className="px-6 py-4 font-mono text-xs text-muted-foreground">
-                    {invoice.dueDate.toLocaleDateString('pt-BR')}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <Badge variant={invoice.status === 'PAID' ? 'success' : invoice.status === 'OVERDUE' ? 'destructive' : 'warning'}>
-                      {invoice.status}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <InvoiceListTable invoices={invoices} />
+        <Pagination total={total} take={take} />
       </Card>
     </div>
   );

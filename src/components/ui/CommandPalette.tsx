@@ -64,13 +64,31 @@ export function CommandPalette() {
     }
   }, [isOpen]);
 
-  const filtered = ROUTES.filter((r) => {
+  const filtered = ROUTES.map((r) => {
+    if (!query) return { ...r, score: 1 };
+    
+    const target = `${r.name} ${r.keywords}`.toLowerCase();
     const q = query.toLowerCase();
-    return (
-      r.name.toLowerCase().includes(q) ||
-      r.keywords.toLowerCase().includes(q)
-    );
-  });
+    
+    // Exact substring match gives highest score
+    if (target.includes(q)) return { ...r, score: 100 };
+    
+    // Fuzzy matching logic
+    let i = 0;
+    let score = 0;
+    for (let j = 0; j < target.length && i < q.length; j++) {
+      if (target[j] === q[i]) {
+        i++;
+        score += 10; // Base score for matching a char
+        if (j === 0 || target[j-1] === ' ') score += 5; // Bonus for start of word
+      }
+    }
+    
+    // Only return positive score if all chars in query matched in order
+    return { ...r, score: i === q.length ? score : 0 };
+  })
+  .filter((r) => r.score > 0)
+  .sort((a, b) => b.score - a.score);
 
   const handleSelect = (href: string) => {
     setIsOpen(false);

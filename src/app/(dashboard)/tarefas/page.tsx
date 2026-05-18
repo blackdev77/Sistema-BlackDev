@@ -3,14 +3,22 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/prisma";
 import { CheckSquare, Plus, Search, Filter } from "lucide-react";
+import { QuickTaskModal } from "./QuickTaskModal";
 
 export const dynamic = "force-dynamic";
 
 export default async function TarefasPage() {
-  const tasks = await prisma.projectTask.findMany({
-    include: { project: { select: { name: true } } },
-    orderBy: { createdAt: 'desc' }
-  });
+  const [tasks, projects] = await Promise.all([
+    prisma.projectTask.findMany({
+      include: { project: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.project.findMany({
+      select: { id: true, name: true },
+      where: { status: { not: 'CANCELLED' } },
+      orderBy: { name: 'asc' }
+    })
+  ]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -27,10 +35,7 @@ export default async function TarefasPage() {
             <Filter className="w-4 h-4" />
             Filtros
           </Button>
-          <Button variant="primary" className="gap-2">
-            <Plus className="w-4 h-4" />
-            Nova Tarefa Rápida
-          </Button>
+          <QuickTaskModal projects={projects} />
         </div>
       </div>
 

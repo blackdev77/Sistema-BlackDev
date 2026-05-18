@@ -15,6 +15,7 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
+import { ProfitChart } from "./ProfitChart";
 
 export const dynamic = "force-dynamic";
 
@@ -154,28 +155,9 @@ export default async function DashboardPage() {
               R$ {profit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </span>
           </div>
-          <div className="flex h-3 rounded-full overflow-hidden bg-border">
-            {revenue > 0 && (
-              <div
-                className="bg-emerald-500 transition-all duration-1000"
-                style={{ width: `${Math.min((revenue / (revenue + expenses || 1)) * 100, 100)}%` }}
-              />
-            )}
-            {expenses > 0 && (
-              <div
-                className="bg-red-500/70 transition-all duration-1000"
-                style={{ width: `${Math.min((expenses / (revenue + expenses || 1)) * 100, 100)}%` }}
-              />
-            )}
-          </div>
-          <div className="flex justify-between mt-2 text-xs font-mono text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Receita
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-red-500/70" /> Despesas
-            </span>
-          </div>
+          
+          <ProfitChart revenue={revenue} expenses={expenses} />
+          
         </CardContent>
       </Card>
 
