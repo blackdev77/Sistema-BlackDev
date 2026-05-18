@@ -89,3 +89,32 @@ export async function rejectDevice(requestId: string, deviceId: string, reason: 
     return { success: false, error: "Erro ao rejeitar dispositivo" };
   }
 }
+
+export async function revokeDevice(deviceId: string) {
+  try {
+    const session = await auth();
+    const userId = session?.user?.id;
+    if (!userId) throw new Error("Não autorizado");
+
+    await prisma.trustedDevice.update({
+      where: { id: deviceId },
+      data: {
+        status: "REVOKED",
+      }
+    });
+
+    await prisma.securityEvent.create({
+      data: {
+        userId: userId,
+        eventType: "DEVICE_REVOKED",
+        description: `Dispositivo ${deviceId} revogado pelo administrador.`,
+      }
+    });
+
+    revalidatePath("/admin/seguranca");
+    return { success: true };
+  } catch (error) {
+    console.error("Device revocation failed:", error);
+    return { success: false, error: "Erro ao remover dispositivo" };
+  }
+}

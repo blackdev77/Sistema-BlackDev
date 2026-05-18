@@ -5,10 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { ShieldAlert, CheckCircle, XCircle, MonitorSmartphone, Clock } from "lucide-react";
 import DeviceApprovalClient from "./DeviceApprovalClient";
+import SecurityAutoRefresh from "./SecurityAutoRefresh";
+import DeviceRevokeClient from "./DeviceRevokeClient";
 
 export default function SecurityPanelPage() {
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden bg-background">
+      <SecurityAutoRefresh />
       <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
         <div className="max-w-6xl mx-auto space-y-8">
           
@@ -57,6 +60,16 @@ async function SecurityData() {
     orderBy: { createdAt: "desc" }
   });
 
+  const approvedDevices = await prisma.trustedDevice.findMany({
+    where: {
+      status: "APPROVED"
+    },
+    include: {
+      user: true
+    },
+    orderBy: { approvedAt: "desc" }
+  });
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       
@@ -94,6 +107,46 @@ async function SecurityData() {
             ))}
           </div>
         )}
+
+        {/* Dispositivos Autorizados */}
+        <div className="space-y-6 pt-6">
+          <h2 className="text-xl font-serif text-white border-b border-border/50 pb-2">Dispositivos Autorizados</h2>
+          
+          {approvedDevices.length === 0 ? (
+            <div className="bg-surface border border-border p-8 rounded flex flex-col items-center justify-center text-center space-y-3">
+              <MonitorSmartphone className="w-10 h-10 text-muted-foreground/30" />
+              <p className="text-muted-foreground">Nenhum dispositivo autorizado registrado.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {approvedDevices.map((dev) => (
+                <Card key={dev.id} className="border-border/30 bg-surface/40">
+                  <CardContent className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <MonitorSmartphone className="w-4 h-4 text-emerald-400" />
+                        <h3 className="font-bold text-white text-sm">Dispositivo de {dev.user.name}</h3>
+                      </div>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        Navegador: {dev.browser || 'Desconhecido'}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/50 font-mono">
+                        Fingerprint: {dev.fingerprint}
+                      </p>
+                      {dev.approvedAt && (
+                        <p className="text-[10px] text-muted-foreground">
+                          Aprovado em: {dev.approvedAt.toLocaleString("pt-BR")}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <DeviceRevokeClient deviceId={dev.id} />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Security Audit Timeline */}
