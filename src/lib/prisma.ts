@@ -1,9 +1,9 @@
 import { basePrisma } from './prisma-client'
-import { auth } from '@/auth'
 
 // Helper to get the current userId safely (works in Server Actions/Components)
 async function getCurrentUserId() {
   try {
+    const { auth } = await import('@/auth');
     const session = await auth();
     return session?.user?.id || null;
   } catch {
