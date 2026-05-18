@@ -84,16 +84,56 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 throw new Error('DEVICE_UNTRUSTED');
               }
             } else if (device.status !== 'APPROVED') {
-              // Device exists but is not approved (PENDING, REVOKED, EXPIRED)
-              await prisma.loginHistory.create({
-                data: {
-                  userId: user.id,
-                  status: 'DEVICE_UNTRUSTED',
-                  reason: `Device status is ${device.status}`
-                }
-              });
+              // Device exists but is not approved (PENDING, REJECTED, REVOKED, EXPIRED)
               
-              throw new Error(`DEVICE_${device.status}`);
+              if (device.status === 'REJECTED' || device.status === 'REVOKED') {
+                // If the device was previously rejected or revoked, we allow them to request approval again!
+                // 1. Reset device status back to PENDING
+                await prisma.trustedDevice.update({
+                  where: { id: device.id },
+                  data: { status: 'PENDING' }
+                });
+
+                // 2. Ensure a pending request exists
+                const existingRequest = await prisma.deviceApprovalRequest.findFirst({
+                  where: {
+                    deviceId: device.id,
+                    status: 'PENDING'
+                  }
+                });
+
+                if (!existingRequest) {
+                  await prisma.deviceApprovalRequest.create({
+                    data: {
+                      deviceId: device.id,
+                      requestedById: user.id,
+                      status: 'PENDING'
+                    }
+                  });
+                }
+
+                // 3. Log the new audit history event
+                await prisma.loginHistory.create({
+                  data: {
+                    userId: user.id,
+                    status: 'DEVICE_UNTRUSTED',
+                    reason: 'Device was previously rejected/revoked. New request generated automatically.'
+                  }
+                });
+
+                throw new Error('DEVICE_UNTRUSTED');
+              } else {
+                // Standard PENDING or other state
+                await prisma.loginHistory.create({
+                  data: {
+                    userId: user.id,
+                    status: 'DEVICE_UNTRUSTED',
+                    reason: `Device status is ${device.status}`
+                  }
+                });
+                
+                throw new Error(`DEVICE_${device.status}`);
+              }
             }
           }
 
