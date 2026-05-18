@@ -42,6 +42,21 @@ export default auth(async (req) => {
     }
   }
 
+  // Enforce Dashboard security (non-portal routes)
+  const isLoggedIn = !!req.auth?.user;
+  const isOnLogin = nextUrl.pathname.startsWith('/login');
+
+  if (isOnLogin) {
+    if (isLoggedIn) {
+      return NextResponse.redirect(new URL('/', nextUrl));
+    }
+    return NextResponse.next();
+  }
+
+  if (!isLoggedIn) {
+    return NextResponse.redirect(new URL('/login', nextUrl));
+  }
+
   return NextResponse.next();
 });
 
