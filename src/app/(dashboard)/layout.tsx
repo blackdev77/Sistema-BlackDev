@@ -1,9 +1,11 @@
 import { Shell } from "@/components/layout/Shell";
+import { auth } from "@/auth";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <Shell>{children}</Shell>;
+  const session = await auth();
+  return <Shell session={session}>{children}</Shell>;
 }
