@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/prisma";
-import { Users, Search, ExternalLink, Globe } from "lucide-react";
+import { Users, Search, ExternalLink, Globe, Download } from "lucide-react";
 import Link from "next/link";
 import { ClientFormSlideOver } from "./ClientFormSlideOver";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -36,6 +36,12 @@ export default async function ClientesPage() {
               className="bg-surface border border-border text-sm pl-9 pr-4 py-2 w-64 focus:outline-none focus:ring-1 focus:ring-white transition-shadow text-white placeholder:text-muted-foreground"
             />
           </div>
+          <a href="/api/clientes/export">
+            <Button variant="outline" className="gap-2">
+              <Download className="w-4 h-4" />
+              Exportar
+            </Button>
+          </a>
           <ClientFormSlideOver />
         </div>
       </div>

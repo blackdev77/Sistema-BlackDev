@@ -159,10 +159,12 @@ export default async function FinanceiroPage() {
           <p className="text-muted-foreground">Previsibilidade de caixa, faturamento e fluxo mensal.</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" className="gap-2">
-            <Download className="w-4 h-4" />
-            Exportar Relatório
-          </Button>
+          <a href="/api/financeiro/export">
+            <Button variant="outline" className="gap-2">
+              <Download className="w-4 h-4" />
+              Exportar Relatório
+            </Button>
+          </a>
           <Button variant="primary" className="gap-2">
             <DollarSign className="w-4 h-4" />
             Nova Fatura

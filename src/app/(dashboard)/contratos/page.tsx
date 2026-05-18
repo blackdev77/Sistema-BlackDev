@@ -2,8 +2,9 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/prisma";
-import { FileSignature, Plus, Search, ExternalLink } from "lucide-react";
+import { FileSignature, Plus, Search, ExternalLink, Download } from "lucide-react";
 import { ContractFormSlideOver } from "./ContractFormSlideOver";
+import { EditContractSlideOver } from "./EditContractSlideOver";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,12 @@ export default async function ContratosPage() {
               className="bg-surface border border-border text-sm pl-9 pr-4 py-2 w-64 focus:outline-none focus:ring-1 focus:ring-white transition-shadow text-white placeholder:text-muted-foreground"
             />
           </div>
+          <a href="/api/contratos/export">
+            <Button variant="outline" className="gap-2">
+              <Download className="w-4 h-4" />
+              Exportar
+            </Button>
+          </a>
           <ContractFormSlideOver clients={clients} projects={projects} />
         </div>
       </div>
@@ -57,13 +64,14 @@ export default async function ContratosPage() {
                 <th className="px-6 py-4 font-normal">Cliente</th>
                 <th className="px-6 py-4 font-normal">Valor</th>
                 <th className="px-6 py-4 font-normal">Vigência</th>
-                <th className="px-6 py-4 font-normal text-right">Status</th>
+                <th className="px-6 py-4 font-normal">Status</th>
+                <th className="px-6 py-4 font-normal text-right">Ação</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {contracts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
                     Nenhum contrato ativo no sistema.
                   </td>
                 </tr>
@@ -71,14 +79,17 @@ export default async function ContratosPage() {
                 <tr key={contract.id} className="hover:bg-surface/80 transition-colors">
                   <td className="px-6 py-4 font-medium text-white">{contract.title}</td>
                   <td className="px-6 py-4 text-muted-foreground">{contract.client.tradeName}</td>
-                  <td className="px-6 py-4 font-mono text-xs text-white">R$ {contract.value.toLocaleString('pt-BR')}</td>
+                  <td className="px-6 py-4 font-mono text-xs text-white">R$ {contract.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td className="px-6 py-4 font-mono text-xs text-muted-foreground">
                     {contract.startsAt ? contract.startsAt.toLocaleDateString('pt-BR') : '--'} até {contract.endsAt ? contract.endsAt.toLocaleDateString('pt-BR') : '--'}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4">
                     <Badge variant={contract.status === 'SIGNED' ? 'success' : contract.status === 'DRAFT' ? 'outline' : 'warning'}>
                       {contract.status}
                     </Badge>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <EditContractSlideOver contract={contract} clients={clients} projects={projects} />
                   </td>
                 </tr>
               ))}

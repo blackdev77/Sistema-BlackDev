@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/prisma";
-import { CreditCard, Search, Filter } from "lucide-react";
+import { CreditCard, Search, Filter, Download } from "lucide-react";
 import { ExpenseFormSlideOver } from "./ExpenseFormSlideOver";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -28,6 +28,12 @@ export default async function DespesasPage() {
             <Filter className="w-4 h-4" />
             Filtros
           </Button>
+          <a href="/api/despesas/export">
+            <Button variant="outline" className="gap-2">
+              <Download className="w-4 h-4" />
+              Exportar
+            </Button>
+          </a>
           <ExpenseFormSlideOver />
         </div>
       </div>
