@@ -5,6 +5,7 @@ import { Building2, Mail, Phone, ExternalLink, Briefcase, Receipt, FileSignature
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { EditClientSlideOver } from "./EditClientSlideOver";
 
 export const dynamic = "force-dynamic";
 
@@ -66,8 +67,17 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
       {/* Header Profile */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
         <div className="flex items-start gap-6">
-          <div className="w-20 h-20 bg-white rounded-md flex items-center justify-center shrink-0">
-            <Building2 className="w-10 h-10 text-black" />
+          <div className="w-20 h-20 bg-white rounded-md flex items-center justify-center shrink-0 overflow-hidden p-1.5 border border-border/50">
+            {client.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img 
+                src={client.logoUrl} 
+                alt={client.tradeName} 
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <Building2 className="w-10 h-10 text-black" />
+            )}
           </div>
           <div className="flex flex-col gap-2 pt-1">
             <div className="flex items-center gap-3">
@@ -79,12 +89,13 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
             <div className="flex flex-col gap-0.5 text-sm font-mono text-muted-foreground">
               <span>Razão Social: {client.legalName}</span>
               <span>CNPJ: {client.document || "Não cadastrado"}</span>
+              {client.address && <span>Endereço: {client.address}</span>}
             </div>
           </div>
         </div>
         
         <div className="flex gap-3">
-          <Button variant="outline" className="gap-2">Editar Cliente</Button>
+          <EditClientSlideOver client={client} />
           <Button variant="primary" className="gap-2">
             <Plus className="w-4 h-4" />
             Novo Projeto

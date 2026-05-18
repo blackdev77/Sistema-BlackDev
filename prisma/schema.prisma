@@ -326,6 +326,7 @@ model Client {
   tradeName    String
   document     String?  // CNPJ/CPF
   address      String?
+  logoUrl      String?  // URL/Base64 of the company brand logo
   status       String   @default("ACTIVE") 
   tier         String   @default("STANDARD") // STANDARD, VIP, ENTERPRISE
 
