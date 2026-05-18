@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 interface SlideOverProps {
@@ -31,11 +32,11 @@ export function SlideOver({ isOpen, onClose, title, description, children }: Sli
 
   if (!isMounted) return null;
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <div 
-        className={`fixed inset-0 bg-black/80 backdrop-blur-sm z-50 transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/85 backdrop-blur-md z-[100] transition-opacity duration-300 ${
           isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}
@@ -43,7 +44,7 @@ export function SlideOver({ isOpen, onClose, title, description, children }: Sli
       
       {/* Panel */}
       <div 
-        className={`fixed inset-y-0 right-0 z-50 w-full max-w-md bg-background border-l border-border shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col ${
+        className={`fixed inset-y-0 right-0 z-[100] w-full max-w-md bg-background border-l border-border shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -64,6 +65,7 @@ export function SlideOver({ isOpen, onClose, title, description, children }: Sli
           {children}
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
