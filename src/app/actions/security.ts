@@ -41,9 +41,9 @@ export async function approveDevice(requestId: string, deviceId: string) {
 
     revalidatePath("/admin/seguranca");
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Device approval failed:", error);
-    return { success: false, error: "Erro interno ao aprovar dispositivo" };
+    return { success: false, error: error?.message || "Erro interno ao aprovar dispositivo" };
   }
 }
 
@@ -84,9 +84,9 @@ export async function rejectDevice(requestId: string, deviceId: string, reason: 
 
     revalidatePath("/admin/seguranca");
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Device rejection failed:", error);
-    return { success: false, error: "Erro ao rejeitar dispositivo" };
+    return { success: false, error: error?.message || "Erro ao rejeitar dispositivo" };
   }
 }
 
@@ -113,8 +113,8 @@ export async function revokeDevice(deviceId: string) {
 
     revalidatePath("/admin/seguranca");
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Device revocation failed:", error);
-    return { success: false, error: "Erro ao remover dispositivo" };
+    return { success: false, error: error?.message || "Erro ao remover dispositivo" };
   }
 }
