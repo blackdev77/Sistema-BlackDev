@@ -49,8 +49,8 @@ export default function DeviceApprovalClient({ requestId, deviceId }: { requestI
         Bloquear
       </Button>
       <Button 
-        variant="primary" 
-        className="bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500" 
+        variant="outline" 
+        className="bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 hover:text-white" 
         onClick={handleApprove}
         disabled={isPending}
       >
