@@ -10,34 +10,32 @@ export async function approveDevice(requestId: string, deviceId: string) {
     const userId = session?.user?.id;
     if (!userId) throw new Error("Não autorizado");
 
-    // Start a transaction: Update Request, Update Device, Record Event
-    await prisma.$transaction(async (tx) => {
-      await tx.deviceApprovalRequest.update({
+    // Use a high-performance Prisma batch transaction to send all queries in a single database round-trip
+    await prisma.$transaction([
+      prisma.deviceApprovalRequest.update({
         where: { id: requestId },
         data: {
           status: "APPROVED",
           approvedById: userId,
           resolvedAt: new Date(),
         }
-      });
-
-      await tx.trustedDevice.update({
+      }),
+      prisma.trustedDevice.update({
         where: { id: deviceId },
         data: {
           status: "APPROVED",
           approvedById: userId,
           approvedAt: new Date(),
         }
-      });
-
-      await tx.securityEvent.create({
+      }),
+      prisma.securityEvent.create({
         data: {
           userId: userId,
           eventType: "DEVICE_APPROVED",
           description: `Dispositivo ${deviceId} aprovado.`,
         }
-      });
-    });
+      })
+    ]);
 
     revalidatePath("/admin/seguranca");
     return { success: true };
@@ -53,8 +51,9 @@ export async function rejectDevice(requestId: string, deviceId: string, reason: 
     const userId = session?.user?.id;
     if (!userId) throw new Error("Não autorizado");
 
-    await prisma.$transaction(async (tx) => {
-      await tx.deviceApprovalRequest.update({
+    // Use a high-performance Prisma batch transaction to avoid database timeouts
+    await prisma.$transaction([
+      prisma.deviceApprovalRequest.update({
         where: { id: requestId },
         data: {
           status: "REJECTED",
@@ -62,25 +61,23 @@ export async function rejectDevice(requestId: string, deviceId: string, reason: 
           resolvedAt: new Date(),
           justification: reason,
         }
-      });
-
-      await tx.trustedDevice.update({
+      }),
+      prisma.trustedDevice.update({
         where: { id: deviceId },
         data: {
           status: "REJECTED",
           approvedById: userId,
           approvedAt: new Date(),
         }
-      });
-
-      await tx.securityEvent.create({
+      }),
+      prisma.securityEvent.create({
         data: {
           userId: userId,
           eventType: "DEVICE_REJECTED",
           description: `Dispositivo ${deviceId} rejeitado: ${reason}`,
         }
-      });
-    });
+      })
+    ]);
 
     revalidatePath("/admin/seguranca");
     return { success: true };
