@@ -124,6 +124,9 @@ export function KanbanBoard({ initialColumns }: { initialColumns: Column[] }) {
     if (sourceColIndex === -1 || destColIndex === -1 || sourceColIndex === destColIndex || !lead) return;
 
     const newStatus = columns[destColIndex].id;
+    
+    // Store previous state for rollback
+    const prevColumns = [...columns];
 
     // Optimistic Update
     setColumns(prev => {
@@ -144,12 +147,17 @@ export function KanbanBoard({ initialColumns }: { initialColumns: Column[] }) {
 
     // Server Update
     startTransition(async () => {
-      const result = await updateLeadStatus(leadId, newStatus);
-      if (result.success) {
-        toast.success("Lead atualizado!");
-      } else {
-        toast.error("Erro ao atualizar lead.");
-        // Should revert state ideally, but revalidation fixes it eventually
+      try {
+        const result = await updateLeadStatus(leadId, newStatus);
+        if (result.success) {
+          toast.success("Lead atualizado com sucesso!");
+        } else {
+          toast.error("Erro ao atualizar o lead. Revertendo alteração.");
+          setColumns(prevColumns); // Rollback
+        }
+      } catch (error) {
+        toast.error("Erro de conexão ao atualizar o lead. Revertendo alteração.");
+        setColumns(prevColumns); // Rollback
       }
     });
   };

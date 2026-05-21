@@ -122,27 +122,27 @@ export default async function DashboardPage() {
           icon={TrendingUp}
           trend={revenue > 0 ? "up" : undefined}
           trendValue={revenue > 0 ? "Este mês" : undefined}
-          accent="emerald"
+          accent="success"
         />
         <KPICard
           label="Despesas (Mês)"
           value={`R$ ${expenses.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`}
           icon={Receipt}
           trend={expenses > 0 ? "down" : undefined}
-          accent="red"
+          accent="destructive"
         />
         <KPICard
           label="Projetos Ativos"
           value={String(activeProjects)}
           icon={Briefcase}
-          accent="blue"
+          accent="primary"
         />
         <KPICard
           label="Clientes Ativos"
           value={String(totalClients)}
           icon={Users}
           subtitle={`${totalLeads} leads este mês`}
-          accent="purple"
+          accent="secondary"
         />
       </div>
 
@@ -151,7 +151,7 @@ export default async function DashboardPage() {
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-mono text-muted uppercase tracking-wider">Resultado Operacional</h3>
-            <span className={`text-2xl font-serif font-bold ${profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+            <span className={`text-2xl font-serif font-bold ${profit >= 0 ? "text-success" : "text-destructive"}`}>
               R$ {profit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </span>
           </div>
@@ -232,8 +232,8 @@ export default async function DashboardPage() {
         <div className="flex flex-col gap-6">
           {/* Overdue Invoices */}
           <div className="flex flex-col gap-4">
-            <h2 className="text-lg font-serif font-semibold text-white flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-400" />
+            <h2 className="text-lg font-serif font-semibold text-foreground flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-destructive" />
               Faturas Atrasadas
             </h2>
             <Card>
@@ -247,12 +247,12 @@ export default async function DashboardPage() {
                     {overdueInvoices.map((inv) => (
                       <div key={inv.id} className="px-5 py-4 flex items-center justify-between hover:bg-surface/50 transition-colors">
                         <div className="flex flex-col gap-0.5">
-                          <span className="text-sm text-white">{inv.client.tradeName}</span>
-                          <span className="text-[10px] font-mono text-red-400">
+                          <span className="text-sm text-foreground">{inv.client.tradeName}</span>
+                          <span className="text-[10px] font-mono text-destructive">
                             Venceu em {inv.dueDate.toLocaleDateString("pt-BR")}
                           </span>
                         </div>
-                        <span className="text-sm font-mono text-white">
+                        <span className="text-sm font-mono text-foreground">
                           R$ {inv.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
@@ -291,19 +291,19 @@ export default async function DashboardPage() {
 
       {/* Pending Invoices Banner */}
       {pending > 0 && (
-        <Card className="border-amber-900/50 bg-amber-950/10">
+        <Card className="border-warning/50 bg-warning/10">
           <CardContent className="p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Receipt className="w-5 h-5 text-amber-400" />
+              <Receipt className="w-5 h-5 text-warning" />
               <div>
-                <p className="text-sm font-medium text-white">
+                <p className="text-sm font-medium text-foreground">
                   {invoicesPending._count} fatura(s) pendente(s) totalizando{" "}
                   <span className="font-mono">R$ {pending.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                 </p>
               </div>
             </div>
             <Link href="/faturas">
-              <Button variant="outline" size="sm" className="text-amber-400 border-amber-900 hover:bg-amber-950/30">
+              <Button variant="outline" size="sm" className="text-warning border-warning/50 hover:bg-warning/20">
                 Ver Faturas
               </Button>
             </Link>
@@ -330,13 +330,13 @@ function KPICard({
   trend?: "up" | "down";
   trendValue?: string;
   subtitle?: string;
-  accent: "emerald" | "red" | "blue" | "purple";
+  accent: "success" | "destructive" | "primary" | "secondary";
 }) {
   const accentColors = {
-    emerald: "bg-emerald-950/50 text-emerald-400",
-    red: "bg-red-950/50 text-red-400",
-    blue: "bg-blue-950/50 text-blue-400",
-    purple: "bg-purple-950/50 text-purple-400",
+    success: "bg-success/20 text-success",
+    destructive: "bg-destructive/20 text-destructive",
+    primary: "bg-primary/20 text-primary",
+    secondary: "bg-secondary/20 text-secondary",
   };
 
   return (
@@ -348,11 +348,11 @@ function KPICard({
             <Icon className="w-4 h-4" />
           </div>
         </div>
-        <span className="text-3xl font-serif text-white">{value}</span>
+        <span className="text-3xl font-serif text-foreground">{value}</span>
         {(trend || subtitle) && (
           <div className="flex items-center gap-2">
-            {trend === "up" && <ArrowUpRight className="w-3 h-3 text-emerald-400" />}
-            {trend === "down" && <ArrowDownRight className="w-3 h-3 text-red-400" />}
+            {trend === "up" && <ArrowUpRight className="w-3 h-3 text-success" />}
+            {trend === "down" && <ArrowDownRight className="w-3 h-3 text-destructive" />}
             <span className="text-xs text-muted-foreground">{trendValue || subtitle}</span>
           </div>
         )}
